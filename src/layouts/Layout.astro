@@ -27,6 +27,9 @@ const description = tool ? `${tool.lead}` : SITE.description;
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href={link('favicon.svg')} />
+    <!-- Google AdSense -->
+    <meta name="google-adsense-account" content={SITE.adsenseClient} />
+    <script is:inline async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${SITE.adsenseClient}`} crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&family=Noto+Sans+JP:wght@400;500;700&display=swap" />
@@ -66,6 +69,11 @@ const description = tool ? `${tool.lead}` : SITE.description;
     <footer class="site-footer">
       <div class="container">
         <p>計算結果は目安です。お金に関する大切な判断は、契約書や金融機関の資料もあわせて確認してください。入力した数字はどこにも送信されません。</p>
+        <nav class="footer-links" aria-label="サイトの情報">
+          <a href={link()}>トップページ</a>
+          <a href={link('about')}>運営者情報・お問い合わせ</a>
+          <a href={link('privacy')}>プライバシーポリシー</a>
+        </nav>
         <p>© {SITE.name}</p>
       </div>
     </footer>

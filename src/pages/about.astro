@@ -1,0 +1,32 @@
+---
+// 運営者情報・お問い合わせ（/about）
+import Layout from '../layouts/Layout.astro';
+import { SITE, tools, link } from '../data/tools';
+---
+<Layout title={`運営者情報・お問い合わせ｜${SITE.name}`}>
+  <a class="back" href={link()}>← トップページへ戻る</a>
+  <article class="doc">
+    <h1>運営者情報・お問い合わせ</h1>
+
+    <h2>このサイトについて</h2>
+    <p>{SITE.name}は、犬・猫の年齢換算、グラム単価の比較、割り勘、日割り、複利・ローンなど、毎日の暮らしでよく使う計算をかんたんにできるサイトです。現在 {tools.length} 種類の計算機を公開しています。</p>
+    <p>パソコンやスマホに慣れていない方でも迷わず使えるように、大きな文字と、数字を入れるだけで答えが出るしくみにしています。入力した数字はどこにも送信されません。</p>
+
+    <h2>運営者</h2>
+    <ul>
+      <li>サイト名：{SITE.name}</li>
+      <li>運営者：{SITE.name} 運営者（keisan-tools-lab）</li>
+      <li>開設日：{SITE.policyDate}</li>
+    </ul>
+
+    <h2>お問い合わせ</h2>
+    <p>計算のまちがいのご報告や、「こんな計算機がほしい」というご要望は、次のページから受け付けています。</p>
+    <p><a href={SITE.contactUrl} target="_blank" rel="noopener">お問い合わせページを開く（GitHub）</a></p>
+    <p class="date">GitHub のアカウント（無料）でログインして、緑色の「New issue」ボタンから送ることができます。</p>
+
+    <h2>関連ページ</h2>
+    <ul>
+      <li><a href={link('privacy')}>プライバシーポリシー</a></li>
+    </ul>
+  </article>
+</Layout>

@@ -52,6 +52,16 @@ a { color: var(--accent); }
 .site-footer { border-top: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 14px; }
 .site-footer .container { padding-block: 20px; }
 .site-footer p { margin: 0; }
+.site-footer .container { display: flex; flex-direction: column; gap: 10px; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.footer-links a { font-weight: 700; padding-block: 4px; }
+
+/* 文章ページ（プライバシーポリシーなど） */
+.doc { display: flex; flex-direction: column; gap: 14px; max-width: 65ch; }
+.doc h2 { margin-top: 18px; font-size: 19px; }
+.doc p, .doc ul { margin: 0; }
+.doc ul { padding-left: 1.3em; }
+.doc .date { color: var(--muted); font-size: 15px; }
 
 /* ---------- 見出し ---------- */
 h1, h2 { font-family: var(--f-head); line-height: 1.45; text-wrap: balance; margin: 0; }

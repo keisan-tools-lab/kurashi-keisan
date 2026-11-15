@@ -18,6 +18,12 @@ export function link(path = ''): string {
 
 export const SITE = {
   name: 'くらし計算帖',
+  // Google AdSense のサイト運営者ID（公開しても問題ない番号です）
+  adsenseClient: 'ca-pub-1463938767131857',
+  // お問い合わせ先（GitHub の Issues。Googleフォームなどに変えてもOK）
+  contactUrl: 'https://github.com/keisan-tools-lab/kurashi-keisan/issues',
+  // プライバシーポリシーなどの制定日
+  policyDate: '2026年11月15日',
   description:
     '犬・猫の年齢、グラム単価、割り勘、日割り、複利など、毎日の暮らしで使える計算機をまとめたサイトです。',
 };

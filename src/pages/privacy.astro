@@ -1,0 +1,40 @@
+---
+// プライバシーポリシー（/privacy）
+import Layout from '../layouts/Layout.astro';
+import { SITE, link } from '../data/tools';
+---
+<Layout title={`プライバシーポリシー｜${SITE.name}`}>
+  <a class="back" href={link()}>← トップページへ戻る</a>
+  <article class="doc">
+    <h1>プライバシーポリシー</h1>
+    <p class="date">制定日：{SITE.policyDate}</p>
+    <p>{SITE.name}（以下「当サイト」）における、利用者の情報の取り扱いについて説明します。</p>
+
+    <h2>入力した数字の取り扱い</h2>
+    <p>当サイトの計算機に入力した数字や名前は、お使いのブラウザの中だけで計算に使われます。当サイトのサーバーや第三者に送信・保存されることはありません。</p>
+
+    <h2>広告の配信について</h2>
+    <p>当サイトは、第三者配信の広告サービス「Google AdSense（グーグルアドセンス）」を利用しています。</p>
+    <ul>
+      <li>Google などの第三者配信事業者は、Cookie（クッキー）を使用して、利用者が当サイトやほかのサイトに過去にアクセスした情報にもとづいて広告を配信します。</li>
+      <li>Google が広告 Cookie を使用することにより、Google やそのパートナーは、当サイトやほかのサイトへのアクセス情報にもとづいて、利用者に適切な広告を表示できます。</li>
+      <li>利用者は、<a href="https://adssettings.google.com/" target="_blank" rel="noopener">Google の広告設定</a>で、パーソナライズ広告を無効にできます。また、<a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener">www.aboutads.info</a> にアクセスすると、第三者配信事業者の Cookie を無効にできます。</li>
+      <li>Google による情報の取り扱いについては、<a href="https://policies.google.com/technologies/ads?hl=ja" target="_blank" rel="noopener">Google の広告に関するポリシー</a>をご覧ください。</li>
+    </ul>
+
+    <h2>アクセス解析について</h2>
+    <p>当サイトでは、現在アクセス解析ツールは使用していません。今後導入する場合は、このページでお知らせします。</p>
+
+    <h2>免責事項</h2>
+    <p>当サイトの計算結果は目安です。正確さには注意していますが、結果を保証するものではありません。当サイトの利用によって生じた損害について、当サイトは責任を負いかねます。お金や契約に関する大切な判断は、契約書や金融機関などの資料もあわせて確認してください。</p>
+
+    <h2>著作権</h2>
+    <p>当サイトの文章やデザインの著作権は、当サイトの運営者に帰属します。</p>
+
+    <h2>プライバシーポリシーの変更</h2>
+    <p>当サイトは、必要に応じてこのプライバシーポリシーを変更することがあります。変更した場合は、このページでお知らせします。</p>
+
+    <h2>お問い合わせ</h2>
+    <p>このポリシーについてのお問い合わせは、<a href={link('about')}>運営者情報・お問い合わせ</a>のページからお願いします。</p>
+  </article>
+</Layout>
