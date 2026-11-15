@@ -1,0 +1,98 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+---
+<Layout slug="takehome">
+  <InputCard>
+    <Field id="salary" label="年収（額面・税金などを引く前）" unit="円" value={4000000} positive max={100000000} />
+    <Choice name="ageband" label="年齢" checked="u40" options={[
+      { value: 'u40', label: '40歳未満' },
+      { value: 'm40', label: '40〜64歳' },
+      { value: 'o65', label: '65歳以上' },
+    ]} />
+    <div class="grid2">
+      <Field id="hr" label="健康保険料率（本人負担）" unit="%" value={5} min={0} max={10} hint="わからなければそのまま（協会けんぽの全国平均くらい）" />
+      <Field id="cr" label="介護保険料率（本人負担）" unit="%" value={0.8} min={0} max={5} hint="40〜64歳の人だけにかかります" />
+    </div>
+  </InputCard>
+
+  <Result title="手取りの目安">
+    <Answer id="out" label="1年間の手取り" />
+    <dl class="rows" id="rows"></dl>
+    <p class="note">会社員・独身（扶養する家族なし）・ボーナスなし・ほかの控除なし、として計算した目安です。住民税は本来、前の年の収入をもとに決まります。</p>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, radio, fmt, yen, big, rows, watch } from '../scripts/util';
+
+  /** 給与所得控除（2025年分からの金額） */
+  function kyuyoKojo(s: number): number {
+    if (s <= 1900000) return Math.min(s, 650000);
+    if (s <= 3600000) return s * 0.3 + 80000;
+    if (s <= 6600000) return s * 0.2 + 440000;
+    if (s <= 8500000) return s * 0.1 + 1100000;
+    return 1950000;
+  }
+  /** 所得税の基礎控除（2025年・2026年分） */
+  function kisoKojo(income: number): number {
+    if (income <= 1320000) return 950000;
+    if (income <= 3360000) return 880000;
+    if (income <= 4890000) return 680000;
+    if (income <= 6550000) return 630000;
+    if (income <= 23500000) return 580000;
+    if (income <= 24000000) return 480000;
+    if (income <= 24500000) return 320000;
+    if (income <= 25000000) return 160000;
+    return 0;
+  }
+  /** 所得税（復興特別所得税 2.1% をふくむ） */
+  function incomeTax(taxable: number): number {
+    const T: [number, number, number][] = [
+      [1950000, 0.05, 0], [3300000, 0.1, 97500], [6950000, 0.2, 427500], [9000000, 0.23, 636000],
+      [18000000, 0.33, 1536000], [40000000, 0.4, 2796000], [Infinity, 0.45, 4796000],
+    ];
+    const [, rate, minus] = T.find(([max]) => taxable <= max)!;
+    return Math.floor((Math.max(0, taxable * rate - minus) * 1.021) / 100) * 100;
+  }
+
+  function update() {
+    const S = num('salary'), band = radio('ageband');
+    const health = (S * num('hr')) / 100;
+    const care = band === 'm40' ? (S * num('cr')) / 100 : 0;
+    const pension = Math.min(S / 12, 650000) * 12 * 0.0915; // 厚生年金（上限：標準報酬月額65万円）
+    const employ = S * 0.0055; // 雇用保険（一般の事業）
+    const social = health + care + pension + employ;
+
+    const income = Math.max(0, S - kyuyoKojo(S)); // 給与所得
+    const itBase = Math.floor(Math.max(0, income - social - kisoKojo(income)) / 1000) * 1000;
+    const it = incomeTax(itBase);
+
+    // 住民税：所得割10%（基礎控除43万円・調整控除2,500円）＋ 均等割5,000円（森林環境税をふくむ）
+    let resident = 0;
+    if (income > 450000) {
+      const rBase = Math.floor(Math.max(0, income - social - 430000) / 1000) * 1000;
+      const shotoku = Math.max(0, rBase * 0.1 - (rBase > 0 ? 2500 : 0));
+      resident = Math.floor(shotoku / 100) * 100 + 5000;
+    }
+
+    const take = S - social - it - resident;
+    $('out').innerHTML = big(Math.round(take));
+    $('rows').innerHTML = rows([
+      ['1か月あたりの手取り（12で割った額）', yen(take / 12)],
+      ['手取りの割合', `${fmt((take / S) * 100, 1)} %`],
+      ['<b>引かれるお金の合計</b>', yen(S - take)],
+      ['　健康保険料', yen(health)],
+      ...(care > 0 ? [['　介護保険料', yen(care)] as [string, string]] : []),
+      ['　厚生年金保険料', yen(pension)],
+      ['　雇用保険料', yen(employ)],
+      ['　所得税（復興特別所得税こみ）', yen(it)],
+      ['　住民税', yen(resident)],
+    ]);
+  }
+  watch(update);
+</script>

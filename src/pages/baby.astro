@@ -1,0 +1,74 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="baby">
+  <InputCard title="赤ちゃんの生年月日を選んでください">
+    <div class="grid2">
+      <Field id="birth" type="date" label="生年月日" />
+      <Field id="base" type="date" label="いつの時点か（ふつうは今日）" />
+    </div>
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="月齢" />
+    <dl class="rows" id="rows"></dl>
+    <h3 style="margin:0">お祝いの日</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>お祝い</th><th>日付</th><th>あと</th></tr></thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+  </Result>
+</Layout>
+
+<script>
+  import { $, val, fmt, rows, watch, isoDate, parseDate, jpDate, DAY, problem, utc, daysInMonth } from '../scripts/util';
+
+  // 最初は「今日から150日前」に生まれた例を表示
+  const t0 = new Date();
+  ($('birth') as HTMLInputElement).value = isoDate(new Date(t0.getFullYear(), t0.getMonth(), t0.getDate() - 150));
+  ($('base') as HTMLInputElement).value = isoDate(t0);
+
+  /** 生まれた日から k か月後の日（その月に同じ日がなければ月末） */
+  function addMonths(b: Date, k: number): number {
+    const y = b.getUTCFullYear(), m = b.getUTCMonth() + 1 + k;
+    const yy = y + Math.floor((m - 1) / 12), mm = ((m - 1) % 12) + 1;
+    return utc(yy, mm, Math.min(b.getUTCDate(), daysInMonth(yy, mm)));
+  }
+
+  function update() {
+    const b = parseDate(val('birth')), t = parseDate(val('base'));
+    if (b === null || t === null) return;
+    if (b > t) { problem('生年月日が「いつの時点か」より後の日になっています。'); return; }
+    const B = new Date(b), T = new Date(t);
+    let months = (T.getUTCFullYear() - B.getUTCFullYear()) * 12 + (T.getUTCMonth() - B.getUTCMonth());
+    if (addMonths(B, months) > t) months--;
+    const days = Math.round((t - addMonths(B, months)) / DAY);
+    const dayNo = Math.round((t - b) / DAY) + 1; // 生まれた日を1日目として数える
+
+    $('out').innerHTML = `生後 ${months}<small>か月</small> ${days}<small>日</small>`;
+    $('rows').innerHTML = rows([
+      ['生まれた日から', `${fmt(dayNo)} 日目`],
+      ...(months >= 12 ? [['年齢でいうと', `${Math.floor(months / 12)}歳${months % 12}か月`] as [string, string]] : []),
+    ]);
+
+    const events: [string, number][] = [
+      ['お七夜（7日目）', b + 6 * DAY],
+      ['お宮参り・男の子（31日目）', b + 30 * DAY],
+      ['お宮参り・女の子（32日目）', b + 31 * DAY],
+      ['お食い初め・百日祝い（100日目）', b + 99 * DAY],
+      ['ハーフバースデー（6か月）', addMonths(B, 6)],
+      ['1歳の誕生日', addMonths(B, 12)],
+    ];
+    $('tbl').innerHTML = events.map(([name, d]) => {
+      const left = Math.round((d - t) / DAY);
+      return `<tr${left === 0 ? ' class="on"' : ''}><td>${name}</td><td>${jpDate(d)}</td><td>${left > 0 ? `${left}日` : left === 0 ? '今日' : 'すぎました'}</td></tr>`;
+    }).join('');
+  }
+  watch(update);
+</script>

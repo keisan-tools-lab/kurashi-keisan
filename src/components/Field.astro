@@ -8,7 +8,7 @@ interface Props {
   unit?: string;
   unitId?: string; // 単位の文字をスクリプトで変えたいときの id
   value?: string | number;
-  type?: 'number' | 'text' | 'date' | 'month';
+  type?: 'number' | 'text' | 'date' | 'month' | 'time';
   min?: number;
   max?: number;
   integer?: boolean; // 整数だけ
@@ -19,7 +19,7 @@ interface Props {
 }
 const { id, label, unit, unitId, value, type = 'number', min, max, integer, positive, optional, placeholder, hint } = Astro.props;
 const isNumber = type === 'number';
-const isPicker = type === 'date' || type === 'month';
+const isPicker = type === 'date' || type === 'month' || type === 'time';
 ---
 <div class="field">
   <label for={id}>{label}</label>

@@ -1,0 +1,76 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+import Select from '../components/Select.astro';
+
+const ages = Array.from({ length: 16 }, (_, i) => 60 + i);
+---
+<Layout slug="pension">
+  <InputCard>
+    <Field id="base" label="65歳から受け取る場合の年金額（1年分）" unit="円" value={1800000} positive hint="「ねんきん定期便」や「ねんきんネット」で確認できます" />
+    <div class="grid2">
+      <Select id="start" label="受け取りを始める年齢" selected="70" options={ages.map((a) => ({ value: String(a), label: `${a}歳${a === 65 ? '（ふつう）' : ''}` }))} />
+      <Field id="until" label="何歳まで受け取る想定か" unit="歳" value={90} min={61} max={110} integer />
+    </div>
+    <Choice name="born" label="生年月日" checked="new" options={[
+      { value: 'new', label: '1962年4月2日以降' },
+      { value: 'old', label: '1962年4月1日以前' },
+    ]} />
+  </InputCard>
+
+  <Result title="受け取る年金の目安">
+    <Answer id="out" label="1年間の年金額" />
+    <dl class="rows" id="rows"></dl>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>始める年齢</th><th>増減</th><th>1年の金額</th><th id="th-total">合計</th></tr></thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, val, radio, fmt, yen, big, rows, watch } from '../scripts/util';
+
+  function rate(start: number, born: string): number {
+    const months = (start - 65) * 12;
+    if (months < 0) return 1 + months * (born === 'new' ? 0.004 : 0.005); // 繰上げ：1か月ごとに減る
+    return 1 + months * 0.007; // 繰下げ：1か月ごとに0.7%増える
+  }
+
+  function update() {
+    const base = num('base'), s = parseInt(val('start'), 10), T = num('until'), born = radio('born');
+    const a = base * rate(s, born);
+    const total = (start: number) => base * rate(start, born) * Math.max(0, T - start);
+    const pct = (rate(s, born) - 1) * 100;
+
+    $('out').innerHTML = big(Math.round(a));
+    const list: [string, string][] = [
+      ['1か月あたり', yen(a / 12)],
+      ['65歳から受け取る場合とくらべて', `${pct > 0 ? '+' : ''}${fmt(pct, 1)} %`],
+      [`${fmt(T)}歳までに受け取る合計`, yen(total(s))],
+      ['65歳から受け取った場合の合計', yen(total(65))],
+      ['その差', `${total(s) - total(65) > 0 ? '+' : ''}${yen(total(s) - total(65))}`],
+    ];
+    if (s !== 65) {
+      const a65 = base;
+      const be = (a * s - a65 * 65) / (a - a65); // 合計が同じになる年齢
+      list.push([
+        s > 65 ? '何歳より長生きすると得になるか' : '何歳より長生きすると65歳からのほうが得か',
+        `約 ${fmt(be, 1)} 歳`,
+      ]);
+    }
+    $('rows').innerHTML = rows(list);
+    $('th-total').textContent = `${fmt(T)}歳までの合計`;
+    $('tbl').innerHTML = [60, 62, 64, 65, 66, 68, 70, 72, 75].map((x) => {
+      const p = (rate(x, born) - 1) * 100;
+      return `<tr${x === s ? ' class="on"' : ''}><td>${x}歳</td><td>${p > 0 ? '+' : ''}${fmt(p, 1)}%</td><td>${yen(base * rate(x, born))}</td><td>${yen(total(x))}</td></tr>`;
+    }).join('');
+  }
+  watch(update);
+</script>

@@ -20,21 +20,13 @@ import Field from '../components/Field.astro';
 </Layout>
 
 <script>
-  import { $, val, fmt, rows, watch, isoDate, parseDate, jpDate, DAY, problem } from '../scripts/util';
+  import { $, val, fmt, rows, watch, isoDate, parseDate, jpDate, DAY, problem, wareki } from '../scripts/util';
 
   ($('base') as HTMLInputElement).value = isoDate(new Date());
 
   const SHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
   const ANIMAL = ['ねずみ', 'うし', 'とら', 'うさぎ', 'たつ', 'へび', 'うま', 'ひつじ', 'さる', 'とり', 'いぬ', 'いのしし'];
   const KAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
-  // 元号と、その元号が始まった日
-  const ERAS = [
-    { name: '令和', y: 2019, m: 5, d: 1 },
-    { name: '平成', y: 1989, m: 1, d: 8 },
-    { name: '昭和', y: 1926, m: 12, d: 25 },
-    { name: '大正', y: 1912, m: 7, d: 30 },
-    { name: '明治', y: 1868, m: 10, d: 23 },
-  ];
   // [月, その月で星座が切り替わる日, その日から始まる星座]
   const STARS: [number, number, string][] = [
     [1, 20, 'みずがめ座'], [2, 19, 'うお座'], [3, 21, 'おひつじ座'], [4, 20, 'おうし座'],
@@ -46,12 +38,6 @@ import Field from '../components/Field.astro';
   ];
   const mod = (a: number, n: number) => ((a % n) + n) % n;
 
-  function wareki(y: number, m: number, d: number): string {
-    const e = ERAS.find((x) => y > x.y || (y === x.y && (m > x.m || (m === x.m && d >= x.d))));
-    if (!e) return '—';
-    const n = y - e.y + 1;
-    return `${e.name}${n === 1 ? '元' : n}年`;
-  }
   function star(m: number, d: number): string {
     const i = STARS.findIndex(([sm, sd]) => m === sm && d < sd);
     return i >= 0 ? STARS[mod(i - 1, 12)][2] : STARS[m - 1][2];

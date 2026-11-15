@@ -1,0 +1,52 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="due">
+  <InputCard>
+    <div class="grid2">
+      <Field id="lmp" type="date" label="最後の月経が始まった日" />
+      <Field id="cycle" label="ふだんの月経周期" unit="日" value={28} min={20} max={45} integer hint="わからなければ 28 のまま" />
+    </div>
+  </InputCard>
+
+  <Result title="出産予定日の目安">
+    <Answer id="out" label="出産予定日" />
+    <dl class="rows" id="rows"></dl>
+    <p class="note">ここで出る日付は目安です。正式な出産予定日は、妊娠初期の超音波検査などをもとに、お医者さんが決めます。</p>
+  </Result>
+</Layout>
+
+<script>
+  import { $, val, num, fmt, rows, watch, isoDate, parseDate, jpDate, DAY, problem } from '../scripts/util';
+
+  // 最初は「今日から60日前」を例として表示
+  const t0 = new Date();
+  ($('lmp') as HTMLInputElement).value = isoDate(new Date(t0.getFullYear(), t0.getMonth(), t0.getDate() - 60));
+  const today = parseDate(isoDate(t0))!;
+
+  function update() {
+    const lmp = parseDate(val('lmp'));
+    if (lmp === null) return;
+    if (lmp > today) { problem('「最後の月経が始まった日」が今日より後の日になっています。'); return; }
+    const start = lmp + ((num('cycle') || 28) - 28) * DAY; // 周期のずれを調整（妊娠0週0日）
+    const due = start + 280 * DAY; // 40週0日
+    const days = Math.round((today - start) / DAY);
+    const at = (w: number) => start + w * 7 * DAY;
+
+    $('out').textContent = jpDate(due);
+    const left = Math.round((due - today) / DAY);
+    const list: [string, string][] = [
+      ['今日の妊娠週数', days >= 0 ? `${Math.floor(days / 7)}週${days % 7}日（妊娠${Math.min(10, Math.floor(days / 28) + 1)}か月）` : '—'],
+      ['予定日まで', left >= 0 ? `あと ${fmt(left)} 日` : `予定日を ${fmt(-left)} 日すぎています`],
+      ['安定期に入るころ（16週0日）', jpDate(at(16))],
+      ['産休が取れる日（予定日の6週間前）', jpDate(due - 42 * DAY)],
+      ['正期産（37週0日〜41週6日）', `${jpDate(at(37))} 〜 ${jpDate(at(42) - DAY)}`],
+    ];
+    $('rows').innerHTML = rows(list);
+  }
+  watch(update);
+</script>

@@ -1,0 +1,81 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="grade">
+  <InputCard title="生年月日を選んでください">
+    <div class="grid2">
+      <Field id="birth" type="date" label="生年月日" value="2019-05-10" />
+      <Field id="base" type="date" label="いつの時点か（ふつうは今日）" />
+    </div>
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="今の学年" />
+    <dl class="rows" id="rows"></dl>
+    <h3 style="margin:0">入学と卒業の年</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>学校</th><th>入学</th><th>卒業</th></tr></thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+  </Result>
+</Layout>
+
+<script>
+  import { $, val, rows, watch, isoDate, parseDate, wareki } from '../scripts/util';
+
+  ($('base') as HTMLInputElement).value = isoDate(new Date());
+
+  /** 日付 → 学校の年度（4月1日から次の年の3月31日まで） */
+  const schoolYear = (y: number, m: number) => (m >= 4 ? y : y - 1);
+
+  function gradeName(g: number): string {
+    if (g <= 0) return '0歳児クラス（年度の途中から）';
+    if (g <= 3) return `${g - 1}歳児クラス`;
+    if (g === 4) return '年少（3歳児クラス）';
+    if (g === 5) return '年中（4歳児クラス）';
+    if (g === 6) return '年長（5歳児クラス）';
+    if (g <= 12) return `小学${g - 6}年生`;
+    if (g <= 15) return `中学${g - 12}年生`;
+    if (g <= 18) return `高校${g - 15}年生`;
+    if (g <= 22) return `大学${g - 18}年生（4年制の場合）`;
+    return '大学を卒業する年齢をすぎています';
+  }
+
+  function update() {
+    const b = parseDate(val('birth')), t = parseDate(val('base'));
+    if (b === null || t === null) return;
+    const B = new Date(b), T = new Date(t);
+    const by = B.getUTCFullYear(), bm = B.getUTCMonth() + 1, bd = B.getUTCDate();
+    // 4月2日〜次の年の4月1日生まれが同じ学年
+    const early = bm < 4 || (bm === 4 && bd === 1);
+    const gy = early ? by - 1 : by; // 学年を決める基準の年
+    const fy = schoolYear(T.getUTCFullYear(), T.getUTCMonth() + 1);
+    const g = fy - gy;
+
+    $('out').textContent = t < b ? 'まだ生まれていません' : gradeName(g);
+    $('rows').innerHTML = rows([
+      ['今の年度', `${fy}年度（${wareki(fy, 4, 1)}度）`],
+      ['早生まれ（1月1日〜4月1日生まれ）', early ? 'はい' : 'いいえ'],
+    ]);
+    const span = (enter: number, years: number) =>
+      [`${enter}年4月（${wareki(enter, 4, 1)}）`, `${enter + years}年3月（${wareki(enter + years, 3, 31)}）`];
+    const list: [string, number, number][] = [
+      ['幼稚園（3年保育）', gy + 4, 3],
+      ['小学校', gy + 7, 6],
+      ['中学校', gy + 13, 3],
+      ['高校', gy + 16, 3],
+      ['大学（4年制）', gy + 19, 4],
+    ];
+    $('tbl').innerHTML = list.map(([name, y, n]) => {
+      const [a, c] = span(y, n);
+      return `<tr${fy >= y && fy < y + n ? ' class="on"' : ''}><td>${name}</td><td>${a}</td><td>${c}</td></tr>`;
+    }).join('');
+  }
+  watch(update);
+</script>

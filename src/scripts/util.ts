@@ -222,3 +222,42 @@ export function jpDate(t: number): string {
   return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${WEEK[d.getUTCDay()]}）`;
 }
 export const DAY = 86400000;
+
+/** 年・月・日 → 日数計算用の数値 */
+export const utc = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d);
+/** その月の日数 */
+export const daysInMonth = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+/** 日付の数値 → 「11月15日（日）」の形（年なし） */
+export function mdDate(t: number): string {
+  const d = new Date(t);
+  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${WEEK[d.getUTCDay()]}）`;
+}
+
+/* ---------- 和暦 ---------- */
+// 元号と、その元号が始まった日
+const ERAS = [
+  { name: '令和', y: 2019, m: 5, d: 1 },
+  { name: '平成', y: 1989, m: 1, d: 8 },
+  { name: '昭和', y: 1926, m: 12, d: 25 },
+  { name: '大正', y: 1912, m: 7, d: 30 },
+  { name: '明治', y: 1868, m: 10, d: 23 },
+];
+/** 西暦の年月日 → 「令和8年」の形（日にちまで見て元号を決める） */
+export function wareki(y: number, m = 12, d = 31): string {
+  const e = ERAS.find((x) => y > x.y || (y === x.y && (m > x.m || (m === x.m && d >= x.d))));
+  if (!e) return '';
+  const n = y - e.y + 1;
+  return `${e.name}${n === 1 ? '元' : n}年`;
+}
+
+/* ---------- 時刻 ---------- */
+/** "06:30" → 0時からの分（390） */
+export function parseTime(s: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})/.exec(s || '');
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+/** 0時からの分 → 「22:45」の形（前の日・次の日にまたがってもOK） */
+export function hm(min: number): string {
+  const x = ((Math.round(min) % 1440) + 1440) % 1440;
+  return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`;
+}

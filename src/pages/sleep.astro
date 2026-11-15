@@ -1,0 +1,58 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="sleep">
+  <div class="scope" data-scope>
+    <h2 class="section-title">起きる時間から、寝る時間を逆算</h2>
+    <InputCard title="起きたい時間を入れてください">
+      <div class="grid2">
+        <Field id="wake" type="time" label="起きたい時間" value="06:30" />
+        <Field id="fall" label="寝つくまでにかかる時間" unit="分" value={15} min={0} max={120} integer />
+      </div>
+    </InputCard>
+    <Result title="布団に入る時間の目安">
+      <Answer id="best" label="7時間30分眠るなら" />
+      <dl class="rows" id="rows1"></dl>
+    </Result>
+  </div>
+
+  <div class="scope" data-scope>
+    <h2 class="section-title">寝る時間から、起きる時間を計算</h2>
+    <InputCard title="布団に入る時間を入れてください" hint={false}>
+      <Field id="bed" type="time" label="布団に入る時間" value="23:00" />
+    </InputCard>
+    <Result title="すっきり起きやすい時間の目安">
+      <Answer id="best2" label="7時間30分眠るなら" />
+      <dl class="rows" id="rows2"></dl>
+    </Result>
+  </div>
+</Layout>
+
+<script>
+  import { $, num, val, rows, watch, parseTime, hm } from '../scripts/util';
+
+  const CYCLE = 90; // 眠りのリズム（約90分）
+  const label = (c: number) => {
+    const m = c * CYCLE;
+    return `${Math.floor(m / 60)}時間${m % 60 ? `${m % 60}分` : ''}（${c}回）`;
+  };
+
+  function update() {
+    const fall = num('fall') || 0;
+    const wake = parseTime(val('wake'));
+    if (wake !== null) {
+      $('best').textContent = hm(wake - 5 * CYCLE - fall);
+      $('rows1').innerHTML = rows([6, 5, 4, 3].map((c) => [`${label(c)}眠る`, `${hm(wake - c * CYCLE - fall)} に布団へ`]));
+    }
+    const bed = parseTime(val('bed'));
+    if (bed !== null) {
+      $('best2').textContent = hm(bed + fall + 5 * CYCLE);
+      $('rows2').innerHTML = rows([3, 4, 5, 6].map((c) => [`${label(c)}眠る`, `${hm(bed + fall + c * CYCLE)} に起きる`]));
+    }
+  }
+  watch(update);
+</script>
