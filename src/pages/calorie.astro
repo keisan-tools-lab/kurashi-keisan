@@ -1,0 +1,101 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+import Select from '../components/Select.astro';
+---
+<Layout slug="calorie">
+  <div class="scope" data-scope>
+    <h2 class="section-title">基礎代謝と、1日に使うカロリー</h2>
+    <InputCard title="あなたのことを入れてください">
+      <Choice name="sex" label="性別" checked="2" options={[
+        { value: '1', label: '男性' },
+        { value: '2', label: '女性' },
+      ]} />
+      <div class="grid2">
+        <Field id="age" label="年齢" unit="歳" value={40} min={18} max={100} integer />
+        <Field id="height" label="身長" unit="cm" value={158} positive max={250} />
+        <Field id="weight" label="体重" unit="kg" value={55} positive max={300} />
+        <Field id="lose" label="1か月で減らしたい体重（なければ 0）" unit="kg" value={0} min={0} max={5} />
+      </div>
+      <Choice name="pal" label="ふだんの体の動かし方" checked="1.75" options={[
+        { value: '1.5', label: '少ない（ほとんど座っている）' },
+        { value: '1.75', label: 'ふつう（家事や通勤で動く）' },
+        { value: '2', label: '多い（立ち仕事・運動の習慣）' },
+      ]} />
+    </InputCard>
+    <Result>
+      <Answer id="tdee" label="1日に使うカロリーの目安" />
+      <dl class="rows" id="rows1"></dl>
+      <p class="note" id="diet-note"></p>
+    </Result>
+  </div>
+
+  <div class="scope" data-scope>
+    <h2 class="section-title">運動で使うカロリー</h2>
+    <InputCard title="運動の種類と時間を入れてください" hint={false}>
+      <Select id="mets" label="運動の種類（メッツ）" selected="3.5" options={[
+        { value: '2.5', label: 'ヨガ・ストレッチ（2.5）' },
+        { value: '3.3', label: '掃除機をかける（3.3）' },
+        { value: '3.5', label: 'ふつうのウォーキング（3.5）' },
+        { value: '4', label: 'ラジオ体操第1（4.0）' },
+        { value: '4.3', label: '速歩き（4.3）' },
+        { value: '6.8', label: '自転車（ふつうの速さ）（6.8）' },
+        { value: '7', label: 'ジョギング（7.0）' },
+      ]} />
+      <div class="grid2">
+        <Field id="w2" label="体重" unit="kg" value={55} positive max={300} />
+        <Field id="minutes" label="運動する時間" unit="分" value={30} min={0} max={1440} />
+      </div>
+    </InputCard>
+    <Result>
+      <Answer id="burn" label="使うカロリー" />
+      <dl class="rows" id="rows2"></dl>
+    </Result>
+  </div>
+</Layout>
+
+<script>
+  import { $, num, radio, fmt, big, rows, watch } from '../scripts/util';
+
+  // 国立健康・栄養研究所の式（男性=1、女性=2）
+  const bmr = (w: number, h: number, a: number, s: number) =>
+    ((0.0481 * w + 0.0234 * h - 0.0138 * a - 0.5473 * s + 0.1238) * 1000) / 4.186;
+
+  const RICE = 234; // ごはん1杯（150g）のおよそのカロリー
+
+  function update() {
+    const s = parseFloat(radio('sex')), pal = parseFloat(radio('pal'));
+    const b = bmr(num('weight'), num('height'), num('age'), s);
+    const tdee = b * pal;
+    const lose = num('lose') || 0;
+    const cut = (lose * 7200) / 30; // 体脂肪1kg ≒ 7,200kcal
+    $('tdee').innerHTML = big(Math.round(tdee), 'kcal');
+    const list: [string, string][] = [
+      ['基礎代謝（何もしなくても使うカロリー）', `${fmt(b)} kcal`],
+      ['動き方が「少ない」とき', `${fmt(b * 1.5)} kcal`],
+      ['動き方が「ふつう」のとき', `${fmt(b * 1.75)} kcal`],
+      ['動き方が「多い」とき', `${fmt(b * 2)} kcal`],
+    ];
+    if (lose > 0) {
+      list.push([`1か月で${fmt(lose, 1)}kg減らすには`, `1日 約${fmt(cut)} kcal 減らす`]);
+      list.push(['食べるカロリーの目安', `${fmt(tdee - cut)} kcal`]);
+    }
+    $('rows1').innerHTML = rows(list);
+    $('diet-note').textContent = lose > 0 && tdee - cut < b
+      ? '食べるカロリーが基礎代謝より少なくなっています。体に負担がかかるので、減らすペースをゆるめることをおすすめします。'
+      : '';
+
+    // 運動：メッツ × 体重 × 時間 × 1.05
+    const kcal = parseFloat((document.getElementById('mets') as HTMLSelectElement).value) * num('w2') * (num('minutes') / 60) * 1.05;
+    $('burn').innerHTML = big(Math.round(kcal), 'kcal');
+    $('rows2').innerHTML = rows([
+      ['ごはん（150g）にすると', `約 ${fmt(kcal / RICE, 1)} 杯分`],
+      ['体脂肪にすると', `約 ${fmt((kcal / 7200) * 1000, 1)} g`],
+    ]);
+  }
+  watch(update);
+</script>

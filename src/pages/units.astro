@@ -1,0 +1,109 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+---
+<Layout slug="units">
+  <InputCard>
+    <Choice name="kind" label="何の単位ですか？" checked="length" options={[
+      { value: 'length', label: '長さ' },
+      { value: 'weight', label: '重さ' },
+      { value: 'area', label: '面積・広さ' },
+      { value: 'volume', label: '体積・量' },
+      { value: 'temp', label: '温度' },
+      { value: 'speed', label: '速さ' },
+    ]} />
+    <Field id="value" label="数" value={170} />
+    <div class="grid2">
+      <div class="field"><label for="from">もとの単位</label><select id="from" class="select"></select></div>
+      <div class="field"><label for="to">換算したい単位</label><select id="to" class="select"></select></div>
+    </div>
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="換算すると" />
+    <h3 style="margin:0">ほかの単位では</h3>
+    <dl class="rows" id="rows"></dl>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, radio, fmt, esc, rows, watch, problem } from '../scripts/util';
+
+  // [表示名, 基準の単位にしたときの大きさ]
+  type U = [string, number];
+  const UNITS: Record<string, { list: U[]; from: string; to: string }> = {
+    length: { from: 'cm', to: 'フィート（ft）', list: [
+      ['mm', 0.001], ['cm', 0.01], ['m', 1], ['km', 1000],
+      ['インチ（in）', 0.0254], ['フィート（ft）', 0.3048], ['ヤード（yd）', 0.9144], ['マイル', 1609.344],
+      ['寸', 1 / 33], ['尺', 10 / 33], ['間（けん）', 60 / 33],
+    ] },
+    weight: { from: 'kg', to: 'ポンド（lb）', list: [
+      ['mg', 0.001], ['g', 1], ['kg', 1000], ['t（トン）', 1e6],
+      ['オンス（oz）', 28.349523125], ['ポンド（lb）', 453.59237], ['匁（もんめ）', 3.75], ['斤', 600], ['貫', 3750],
+    ] },
+    area: { from: '坪', to: 'm²', list: [
+      ['cm²', 1e-4], ['m²', 1], ['a（アール）', 100], ['ha（ヘクタール）', 10000], ['km²', 1e6],
+      ['坪', 400 / 121], ['畳（1.62m²）', 1.62], ['平方フィート', 0.09290304], ['エーカー', 4046.8564224],
+    ] },
+    volume: { from: '合', to: 'ml', list: [
+      ['ml', 1], ['cc', 1], ['L', 1000], ['m³', 1e6],
+      ['小さじ', 5], ['大さじ', 15], ['カップ（200ml）', 200], ['合', 180.39], ['升', 1803.9],
+      ['ガロン（米）', 3785.411784], ['液量オンス（米）', 29.5735295625],
+    ] },
+    temp: { from: '℃（摂氏）', to: '℉（華氏）', list: [['℃（摂氏）', 0], ['℉（華氏）', 0], ['K（ケルビン）', 0]] },
+    speed: { from: 'km/h', to: 'mph（マイル毎時）', list: [
+      ['m/s', 1], ['km/h', 1 / 3.6], ['mph（マイル毎時）', 0.44704], ['ノット', 1852 / 3600],
+    ] },
+  };
+  const DEFAULT_VALUE: Record<string, number> = { length: 170, weight: 60, area: 30, volume: 3, temp: 36.5, speed: 100 };
+
+  const fromSel = $('from') as HTMLSelectElement;
+  const toSel = $('to') as HTMLSelectElement;
+  const valueEl = $('value') as HTMLInputElement;
+
+  function fill(kind: string) {
+    const u = UNITS[kind];
+    const opts = u.list.map(([n]) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    fromSel.innerHTML = opts; toSel.innerHTML = opts;
+    fromSel.value = u.from; toSel.value = u.to;
+  }
+  document.querySelectorAll<HTMLInputElement>('input[name="kind"]').forEach((r) =>
+    r.addEventListener('change', () => { fill(r.value); valueEl.value = String(DEFAULT_VALUE[r.value]); }),
+  );
+  fill('length');
+
+  // 温度はかけ算ではないので、℃ を基準に変換します
+  const toC = (v: number, u: string) => (u.startsWith('℉') ? (v - 32) / 1.8 : u.startsWith('K') ? v - 273.15 : v);
+  const fromC = (c: number, u: string) => (u.startsWith('℉') ? c * 1.8 + 32 : u.startsWith('K') ? c + 273.15 : c);
+
+  // 数の大きさに合わせて、見やすい桁数で表示する
+  function nice(n: number): string {
+    if (!Number.isFinite(n)) return '—';
+    const a = Math.abs(n);
+    if (a !== 0 && (a < 0.0001 || a >= 1e12)) return n.toExponential(4).replace('e', ' × 10^');
+    return fmt(n, a >= 100 ? 2 : a >= 1 ? 4 : 6);
+  }
+
+  function update() {
+    const kind = radio('kind'), v = num('value');
+    const list = UNITS[kind].list;
+    const from = fromSel.value, to = toSel.value;
+    let conv: (u: string) => number;
+    if (kind === 'temp') {
+      const c = toC(v, from);
+      if (c < -273.15) problem('温度が絶対零度（-273.15℃）より低くなっています。数を確かめてください。');
+      conv = (u) => fromC(c, u);
+    } else {
+      const base = v * (list.find(([n]) => n === from)?.[1] ?? NaN);
+      conv = (u) => base / (list.find(([n]) => n === u)?.[1] ?? NaN);
+    }
+    $('out-label').textContent = `${nice(v)} ${from} は`;
+    $('out').innerHTML = `${nice(conv(to))}<small>${esc(to)}</small>`;
+    $('rows').innerHTML = rows(list.filter(([n]) => n !== from).map(([n]) => [esc(n), nice(conv(n))]));
+  }
+  watch(update);
+</script>

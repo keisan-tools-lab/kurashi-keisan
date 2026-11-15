@@ -1,0 +1,58 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="bmi">
+  <InputCard>
+    <div class="grid2">
+      <Field id="height" label="身長" unit="cm" value={165} positive max={250} />
+      <Field id="weight" label="体重" unit="kg" value={60} positive max={300} />
+    </div>
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="あなたのBMI" />
+    <p style="margin:0"><span class="tag" id="judge"></span></p>
+    <dl class="rows" id="rows"></dl>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>BMI</th><th>判定（日本肥満学会）</th></tr></thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, fmt, rows, watch } from '../scripts/util';
+
+  // 日本肥満学会の判定基準
+  const LEVELS = [
+    { max: 18.5, label: '低体重（やせ）', range: '18.5未満' },
+    { max: 25, label: '普通体重', range: '18.5以上 25未満' },
+    { max: 30, label: '肥満（1度）', range: '25以上 30未満' },
+    { max: 35, label: '肥満（2度）', range: '30以上 35未満' },
+    { max: 40, label: '肥満（3度）', range: '35以上 40未満' },
+    { max: Infinity, label: '肥満（4度）', range: '40以上' },
+  ];
+
+  function update() {
+    const h = num('height') / 100, w = num('weight');
+    const bmi = w / (h * h);
+    const idx = LEVELS.findIndex((l) => bmi < l.max);
+    const std = 22 * h * h;
+    $('out').innerHTML = Number.isFinite(bmi) ? fmt(bmi, 1) : '—';
+    $('judge').textContent = idx >= 0 ? LEVELS[idx].label : '';
+    const diff = w - std;
+    $('rows').innerHTML = rows([
+      ['標準体重（BMI 22）', `${fmt(std, 1)} kg`],
+      ['標準体重との差', Number.isFinite(diff) ? `${diff > 0 ? '+' : ''}${fmt(diff, 1)} kg` : '—'],
+      ['普通体重の範囲', `${fmt(18.5 * h * h, 1)} kg 以上 〜 ${fmt(25 * h * h, 1)} kg 未満`],
+    ]);
+    $('tbl').innerHTML = LEVELS.map((l, i) => `<tr${i === idx ? ' class="on"' : ''}><td>${l.range}</td><td>${l.label}</td></tr>`).join('');
+  }
+  watch(update);
+</script>
