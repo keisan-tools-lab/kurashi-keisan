@@ -4,6 +4,7 @@
 // src/data/tools.ts から見出しと説明文を自動で表示します。
 import '../styles/global.css';
 import ToolList from '../components/ToolList.astro';
+import Guide from '../components/Guide.astro';
 import { SITE, tools, categories, link } from '../data/tools';
 
 interface Props {
@@ -56,6 +57,8 @@ const description = tool ? `${tool.lead}` : SITE.description;
       )}
 
       <slot />
+
+      {tool && <Guide slug={tool.slug} />}
 
       {tool && related.length > 0 && (
         <section class="related">

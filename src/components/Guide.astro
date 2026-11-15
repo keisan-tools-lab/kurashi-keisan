@@ -1,0 +1,60 @@
+---
+// 計算機の下に表示する「使い方」「計算のしかた」「知っておきたいこと」「よくある質問」
+// 文章は src/data/guides.ts に書いてあります。
+import { guides } from '../data/guides';
+
+interface Props { slug: string }
+const g = guides[Astro.props.slug];
+
+// 検索エンジン向けの「よくある質問」の情報（Googleの検索結果に使われることがあります）
+const faqJson = g
+  ? JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: g.faq.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    })
+  : '';
+---
+{g && (
+  <div class="guide">
+    <section>
+      <h2>使い方</h2>
+      <ol class="howto">
+        {g.howto.map((s) => <li>{s}</li>)}
+      </ol>
+    </section>
+
+    <section>
+      <h2>計算のしかた</h2>
+      {g.formula.map((p) => <p>{p}</p>)}
+      {g.example && (
+        <p class="example"><span class="example-label">計算の例</span>{g.example}</p>
+      )}
+    </section>
+
+    <section>
+      <h2>知っておきたいこと</h2>
+      <ul class="tips">
+        {g.tips.map((t) => <li>{t}</li>)}
+      </ul>
+    </section>
+
+    <section>
+      <h2>よくある質問</h2>
+      <div class="faq">
+        {g.faq.map((f) => (
+          <div class="faq-item">
+            <p class="faq-q"><span class="qa-mark q">Q</span>{f.q}</p>
+            <p class="faq-a"><span class="qa-mark a">A</span>{f.a}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <script type="application/ld+json" set:html={faqJson} />
+  </div>
+)}
