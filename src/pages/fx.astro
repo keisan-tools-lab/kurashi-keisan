@@ -1,0 +1,60 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+---
+<Layout slug="fx">
+  <InputCard>
+    <Choice name="dir" label="両替の向き" checked="a" options={[
+      { value: 'a', label: '円 → 外貨' },
+      { value: 'b', label: '外貨 → 円' },
+    ]} />
+    <div class="grid2">
+      <Field id="cur" type="text" label="通貨の名前" value="ドル" />
+      <Field id="rate" label="レート（1通貨あたり）" unit="円" value={150} positive hint="例の数字です" />
+    </div>
+    <Field id="fee" label="両替手数料（1通貨あたり）" unit="円" value={3} min={0} hint="銀行のドル両替でおよそ3円。空港はもっと高いこともあります" />
+    <Field id="amount" label="両替する金額" unit="円" unitId="amount-unit" value={50000} min={0} />
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="受け取る金額" />
+    <dl class="rows" id="rows"></dl>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, val, radio, fmt, yen, big, esc, rows, watch, problem } from '../scripts/util';
+
+  function update() {
+    const cur = esc(val('cur').trim() || '外貨');
+    const R = num('rate') || 0, F = num('fee') || 0, A = num('amount') || 0;
+    let applied: number, fee: number, noFee: string;
+    if (radio('dir') === 'a') {
+      applied = R + F;
+      const out = applied > 0 ? A / applied : NaN;
+      fee = out * F;
+      noFee = R > 0 ? `${fmt(A / R, 2)} ${cur}` : '—';
+      $('amount-unit').textContent = '円';
+      $('out-label').textContent = `受け取る${val('cur') || '外貨'}`;
+      $('out').innerHTML = big(out, cur, 2);
+    } else {
+      if (R > 0 && F >= R) problem('手数料がレート以上になっています。「レート」と「両替手数料」の数字を確認してください。');
+      applied = R - F;
+      fee = A * F;
+      noFee = yen(A * R);
+      $('amount-unit').textContent = val('cur') || '外貨';
+      $('out-label').textContent = '受け取る日本円';
+      $('out').innerHTML = big(Math.floor(A * applied));
+    }
+    $('rows').innerHTML = rows([
+      ['実際のレート', `1 ${cur} = ${fmt(applied, 2)} 円`],
+      ['手数料の合計（円）', yen(fee)],
+      ['手数料がなければ', noFee],
+    ]);
+  }
+  watch(update);
+</script>

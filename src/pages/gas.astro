@@ -1,0 +1,50 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+---
+<Layout slug="gas">
+  <InputCard>
+    <Field id="km" label="目的地までの距離" unit="km" value={180} min={0} />
+    <Choice name="way" label="片道・往復" checked="2" options={[
+      { value: '1', label: '片道' },
+      { value: '2', label: '往復' },
+    ]} />
+    <div class="grid2">
+      <Field id="eco" label="燃費" unit="km/L" value={15} positive hint="実際はカタログより2〜3割悪いことが多いです" />
+      <Field id="price" label="ガソリン価格" unit="円/L" value={175} min={0} />
+      <Field id="toll" label="高速・駐車場代（なければ 0）" unit="円" value={6200} min={0} />
+      <Field id="people" label="人数" unit="人" value={4} min={1} integer />
+    </div>
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="1人あたり（1円単位で切り上げ）" />
+    <dl class="rows" id="rows"></dl>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, radio, fmt, yen, big, rows, watch } from '../scripts/util';
+
+  function update() {
+    const km = (num('km') || 0) * parseInt(radio('way'), 10);
+    const eco = num('eco'), price = num('price') || 0, toll = num('toll') || 0;
+    const n = Math.max(1, Math.floor(num('people') || 1));
+    const liters = eco > 0 ? km / eco : NaN;
+    const gas = liters * price;
+    const total = gas + toll;
+    $('out').innerHTML = big(Math.ceil(total / n));
+    $('rows').innerHTML = rows([
+      ['走る距離', `${fmt(km, 1)} km`],
+      ['使うガソリン', `${fmt(liters, 1)} L`],
+      ['ガソリン代', yen(gas)],
+      ['高速・駐車場代', yen(toll)],
+      ['合計', yen(total)],
+    ]);
+  }
+  watch(update);
+</script>

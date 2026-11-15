@@ -1,0 +1,10 @@
+---
+// 「① 数字を入れてください」の入力カード
+interface Props { title?: string; step?: number; hint?: boolean }
+const { title = '数字を入れてください', step = 1, hint = true } = Astro.props;
+---
+<section class="card">
+  <h2 class="step"><span class="badge">{step}</span>{title}</h2>
+  <slot />
+  {hint && <p class="hint">数字を変えると、下の結果がすぐに変わります。全角の数字やカンマ（1,280）でも入力できます。</p>}
+</section>

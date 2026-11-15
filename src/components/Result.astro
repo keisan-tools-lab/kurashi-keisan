@@ -1,0 +1,13 @@
+---
+// 「② 計算結果」の欄
+// 入力にまちがいがあるときは、結果のかわりに data-alert の部分にエラーが表示されます。
+interface Props { title?: string; step?: number }
+const { title = '計算結果', step = 2 } = Astro.props;
+---
+<section class="result" aria-live="polite">
+  <h2 class="step"><span class="badge">{step}</span>{title}</h2>
+  <div class="alert" role="alert" data-alert hidden></div>
+  <div class="result-body" data-body>
+    <slot />
+  </div>
+</section>

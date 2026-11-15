@@ -1,0 +1,75 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="calc">
+  <div class="scope" data-scope>
+  <h2 class="section-title">足し算・引き算・掛け算・割り算</h2>
+  <InputCard title="2つの数を入れてください">
+    <div class="grid2">
+      <Field id="a" label="A" value={1280} />
+      <Field id="b" label="B" value={16} />
+    </div>
+  </InputCard>
+  <Result>
+    <div class="ops">
+      <div class="op"><div class="sym">A ＋ B</div><div class="v" id="add">—</div></div>
+      <div class="op"><div class="sym">A − B</div><div class="v" id="sub">—</div></div>
+      <div class="op"><div class="sym">A × B</div><div class="v" id="mul">—</div></div>
+      <div class="op"><div class="sym">A ÷ B</div><div class="v" id="div">—</div></div>
+    </div>
+    <dl class="rows" id="rows"></dl>
+  </Result>
+  </div>
+
+  <h2 class="section-title">パーセントの計算</h2>
+  <section class="card" data-scope>
+    <div class="pct">
+      <p class="pct-q">○○ の △% はいくつ？</p>
+      <div class="grid2"><Field id="p1a" label="もとの数" value={3500} /><Field id="p1b" label="割合" unit="%" value={15} /></div>
+      <p class="pct-a">答え：<strong id="p1">—</strong></p>
+    </div>
+    <div class="pct">
+      <p class="pct-q">○○ は △△ の何%？</p>
+      <div class="grid2"><Field id="p2a" label="くらべる数" value={45} /><Field id="p2b" label="もとの数（全体）" value={60} /></div>
+      <p class="pct-a">答え：<strong id="p2">—</strong></p>
+    </div>
+    <div class="pct">
+      <p class="pct-q">○○ から △△ になったら、何%増えた（減った）？</p>
+      <div class="grid2"><Field id="p3a" label="前の数" value={1200} /><Field id="p3b" label="後の数" value={1500} /></div>
+      <p class="pct-a">答え：<strong id="p3">—</strong></p>
+    </div>
+    <div class="pct">
+      <p class="pct-q">○○円 の △% 引きはいくら？</p>
+      <div class="grid2"><Field id="p4a" label="定価" unit="円" value={4980} /><Field id="p4b" label="割引" unit="% 引き" value={30} /></div>
+      <p class="pct-a">答え：<strong id="p4">—</strong></p>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  import { $, num, fmt, rows, watch } from '../scripts/util';
+
+  function update() {
+    const a = num('a'), b = num('b');
+    $('add').textContent = fmt(a + b, 8);
+    $('sub').textContent = fmt(a - b, 8);
+    $('mul').textContent = fmt(a * b, 8);
+    $('div').textContent = b !== 0 ? fmt(a / b, 8) : '0では割れません';
+    const ai = Math.trunc(a), bi = Math.trunc(b);
+    $('rows').innerHTML = rows([
+      ['A ÷ B の商と余り（整数）', bi !== 0 && Number.isFinite(ai) ? `${fmt(Math.trunc(ai / bi))} 余り ${fmt(ai % bi)}` : '—'],
+    ]);
+
+    $('p1').textContent = fmt((num('p1a') * num('p1b')) / 100, 4);
+    $('p2').textContent = num('p2b') === 0 ? '「もとの数」が 0 だと計算できません' : num('p2b') ? `${fmt((num('p2a') / num('p2b')) * 100, 2)} %` : '—';
+    const d = num('p3a') ? (num('p3b') / num('p3a') - 1) * 100 : NaN;
+    $('p3').textContent = num('p3a') === 0 ? '「前の数」が 0 だと計算できません'
+      : Number.isFinite(d) ? `${d > 0 ? '+' : ''}${fmt(d, 2)} %（${d >= 0 ? '増えた' : '減った'}）` : '—';
+    const p4 = num('p4a') * (1 - num('p4b') / 100);
+    $('p4').textContent = Number.isFinite(p4) ? `${fmt(p4, 2)} 円` : '—';
+  }
+  watch(update);
+</script>

@@ -1,0 +1,88 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+---
+<Layout slug="settle">
+  <InputCard title="メンバーと立て替えた金額を入れてください">
+    <div class="items" id="items"></div>
+    <button class="btn" type="button" id="add">＋ メンバーを追加する</button>
+  </InputCard>
+
+  <Result title="精算のしかた">
+    <dl class="rows" id="rows"></dl>
+    <div class="items" id="out"></div>
+  </Result>
+</Layout>
+
+<script>
+  import { $, yen, esc, rows, watch, numOf, problem } from '../scripts/util';
+
+  const list = $('items');
+  let uid = 0;
+
+  function addMember(d = { n: '', p: '', memo: '' }) {
+    const i = uid++;
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.dataset.kind = 'メンバー';
+    el.innerHTML = `
+      <div class="item-head"><strong class="item-no"></strong><button type="button" class="del">削除</button></div>
+      <div class="grid2">
+        <div class="field"><label for="n${i}">名前</label><div class="inwrap"><input id="n${i}" data-k="n" type="text" value="${esc(d.n)}" autocomplete="off"></div></div>
+        <div class="field"><label for="p${i}">立て替えた金額（なければ空欄）</label><div class="inwrap"><input id="p${i}" data-k="p" type="text" inputmode="decimal" autocomplete="off" data-num data-label="立て替えた金額" data-min="0" data-optional value="${d.p}"><span class="unit">円</span></div></div>
+      </div>
+      <div class="field"><label for="m${i}">メモ（なくてもOK）</label><div class="inwrap"><input id="m${i}" data-k="m" type="text" value="${esc(d.memo)}" placeholder="例：宿代" autocomplete="off"></div></div>`;
+    list.appendChild(el);
+  }
+
+  function update() {
+    const ms: { n: string; p: number }[] = [];
+    list.querySelectorAll<HTMLElement>('.item').forEach((el, i) => {
+      (el.querySelector('.item-no') as HTMLElement).textContent = `メンバー ${i + 1}`;
+      const get = (k: string) => (el.querySelector(`[data-k="${k}"]`) as HTMLInputElement).value;
+      ms.push({ n: get('n') || `メンバー${i + 1}`, p: numOf(el.querySelector('[data-k="p"]')) || 0 });
+    });
+    if (ms.length < 2) problem('精算するには、メンバーが 2人以上 必要です。「＋ メンバーを追加する」で追加してください。');
+    const total = ms.reduce((s, m) => s + m.p, 0);
+    const per = ms.length ? total / ms.length : 0;
+    $('rows').innerHTML = rows([['合計', yen(total)], ['1人あたりの負担', yen(per, 1)]]);
+
+    // 多く払った人（もらう人）と、少なく払った人（払う人）を順に組み合わせる
+    const receive = ms.map((m) => ({ n: m.n, b: m.p - per })).filter((m) => m.b > 0.5).sort((a, b) => b.b - a.b);
+    const pay = ms.map((m) => ({ n: m.n, b: per - m.p })).filter((m) => m.b > 0.5).sort((a, b) => b.b - a.b);
+    const html: string[] = [];
+    let i = 0, j = 0;
+    while (i < pay.length && j < receive.length) {
+      const a = Math.min(pay[i].b, receive[j].b);
+      if (Math.round(a) > 0) {
+        html.push(`<div class="transfer"><b>${esc(pay[i].n)}</b><span class="arrow">→ 払う →</span><b>${esc(receive[j].n)}</b><span class="amount">${yen(Math.round(a))}</span></div>`);
+      }
+      pay[i].b -= a; receive[j].b -= a;
+      if (pay[i].b <= 0.5) i++;
+      if (receive[j].b <= 0.5) j++;
+    }
+    $('out').innerHTML = html.length
+      ? html.join('') + `<p class="note">${html.length}回の支払いで精算できます。1円未満は四捨五入しています。</p>`
+      : '<p class="note">精算の必要はありません。</p>';
+  }
+
+  // 最初に表示する例
+  [
+    { n: 'あおい', p: '24000', memo: '宿代' },
+    { n: 'けんた', p: '9600', memo: 'レンタカー' },
+    { n: 'みさき', p: '4800', memo: '夕ごはん' },
+    { n: 'ゆう', p: '0', memo: '' },
+  ].forEach(addMember);
+
+  $('add').addEventListener('click', () => {
+    addMember();
+    refresh();
+    (list.lastElementChild?.querySelector('input') as HTMLInputElement)?.focus();
+  });
+  list.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('.del');
+    if (b) { b.closest('.item')?.remove(); refresh(); }
+  });
+  const refresh = watch(update);
+</script>

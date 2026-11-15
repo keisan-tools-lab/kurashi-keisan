@@ -1,0 +1,17 @@
+---
+// ボタンのように見える選択肢（ラジオボタン）
+interface Option { value: string; label: string }
+interface Props { name: string; label: string; options: Option[]; checked?: string }
+const { name, label, options, checked } = Astro.props;
+---
+<fieldset class="field">
+  <legend>{label}</legend>
+  <div class="choices">
+    {options.map((o) => (
+      <label class="choice">
+        <input type="radio" name={name} value={o.value} checked={o.value === checked} />
+        <span>{o.label}</span>
+      </label>
+    ))}
+  </div>
+</fieldset>

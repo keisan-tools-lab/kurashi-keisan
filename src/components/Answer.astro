@@ -1,0 +1,10 @@
+---
+// いちばん大きく表示する答え。
+// 数字は id、見出しは「id-label」でスクリプトから書きかえられます。
+interface Props { id: string; label: string }
+const { id, label } = Astro.props;
+---
+<div class="answer">
+  <span class="answer-label" id={`${id}-label`}>{label}</span>
+  <span class="answer-num" id={id}>—</span>
+</div>

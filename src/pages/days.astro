@@ -1,0 +1,66 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="days">
+  <div class="scope" data-scope>
+  <h2 class="section-title">2つの日付の間は何日？</h2>
+  <InputCard title="日付を選んでください">
+    <div class="grid2">
+      <Field id="start" type="date" label="はじめの日" />
+      <Field id="end" type="date" label="おわりの日" />
+    </div>
+  </InputCard>
+  <Result title="期間の日数">
+    <Answer id="trip" label="旅行なら" />
+    <dl class="rows" id="rows1"></dl>
+  </Result>
+  </div>
+
+  <div class="scope" data-scope>
+  <h2 class="section-title">○日後・○日前は何月何日？</h2>
+  <InputCard title="日付と日数を入れてください" hint={false}>
+    <div class="grid2">
+      <Field id="base" type="date" label="もとの日" />
+      <Field id="n" label="日数（○日前はマイナス）" unit="日後" value={100} integer min={-100000} max={100000} />
+    </div>
+  </InputCard>
+  <Result title="その日は">
+    <Answer id="date" label="" />
+  </Result>
+  </div>
+</Layout>
+
+<script>
+  import { $, num, val, fmt, rows, watch, isoDate, parseDate, jpDate, DAY } from '../scripts/util';
+
+  // 最初は「今日から3日後まで」を表示
+  const today = new Date();
+  const later = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3);
+  ($('start') as HTMLInputElement).value = isoDate(today);
+  ($('end') as HTMLInputElement).value = isoDate(later);
+  ($('base') as HTMLInputElement).value = isoDate(today);
+
+  function update() {
+    const s = parseDate(val('start')), e = parseDate(val('end'));
+    if (s !== null && e !== null) {
+      const d = Math.round((e - s) / DAY), a = Math.abs(d);
+      $('trip').textContent = `${a}泊${a + 1}日`;
+      $('rows1').innerHTML = rows([
+        ['日付の差', `${fmt(d)} 日`],
+        ['はじめとおわりの日をふくめると', `${fmt(a + 1)} 日`],
+        ['週にすると', `${Math.floor(a / 7)}週と${a % 7}日`],
+      ]);
+    } else {
+      $('trip').textContent = '—';
+      $('rows1').innerHTML = '';
+    }
+    const b = parseDate(val('base')), n = num('n');
+    $('date').textContent = b !== null && Number.isFinite(n) ? jpDate(b + Math.round(n) * DAY) : '—';
+    $('date-label').textContent = Number.isFinite(n) ? (n >= 0 ? `${fmt(n)}日後` : `${fmt(-n)}日前`) : '';
+  }
+  watch(update);
+</script>

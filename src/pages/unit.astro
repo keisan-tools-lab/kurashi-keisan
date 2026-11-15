@@ -1,0 +1,95 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+---
+<Layout slug="unit">
+  <InputCard title="商品の情報を入れてください">
+    <div class="items" id="items"></div>
+    <button class="btn" type="button" id="add">＋ 商品を追加する</button>
+  </InputCard>
+
+  <Result title="安い順に並べると">
+    <div id="out"></div>
+    <p class="note">kg と g、L と ml は自動でそろえて比べます。g と 枚 のように単位の種類がちがう商品は、別々に比べます。</p>
+  </Result>
+</Layout>
+
+<script>
+  import { $, fmt, esc, watch, numOf } from '../scripts/util';
+
+  // 単位 → [比べるときの単位, 何倍か]
+  const UNITS: Record<string, [string, number]> = {
+    g: ['g', 1], kg: ['g', 1000], ml: ['ml', 1], L: ['ml', 1000],
+    '枚': ['枚', 1], '個': ['個', 1], m: ['m', 1], '回': ['回', 1],
+  };
+  const list = $('items');
+  let uid = 0;
+
+  function addItem(d = { n: '', p: '', q: '', u: 'g', c: '1' }) {
+    const i = uid++;
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.dataset.kind = '商品';
+    el.innerHTML = `
+      <div class="item-head"><strong class="item-no"></strong><button type="button" class="del">削除</button></div>
+      <div class="field"><label for="n${i}">商品名</label><div class="inwrap"><input id="n${i}" data-k="n" type="text" value="${esc(d.n)}" placeholder="例：詰め替え用" autocomplete="off"></div></div>
+      <div class="grid2">
+        <div class="field"><label for="p${i}">価格</label><div class="inwrap"><input id="p${i}" data-k="p" type="text" inputmode="decimal" autocomplete="off" data-num data-label="価格" data-min="0" data-optional value="${d.p}"><span class="unit">円</span></div></div>
+        <div class="field"><label for="c${i}">何個セットか</label><div class="inwrap"><input id="c${i}" data-k="c" type="text" inputmode="decimal" autocomplete="off" data-num data-label="何個セットか" data-pos data-optional value="${d.c}"><span class="unit">個</span></div></div>
+      </div>
+      <div class="field"><label for="q${i}">内容量（1個あたり）</label>
+        <div class="qty"><div class="inwrap"><input id="q${i}" data-k="q" type="text" inputmode="decimal" autocomplete="off" data-num data-label="内容量" data-min="0" data-optional value="${d.q}"></div>
+        <select id="u${i}" data-k="u" class="select" aria-label="単位">${Object.keys(UNITS).map((k) => `<option${k === d.u ? ' selected' : ''}>${k}</option>`).join('')}</select></div>
+      </div>`;
+    list.appendChild(el);
+  }
+
+  function update() {
+    type Row = { name: string; p: number; q: number; u: string; c: number; base: string; per: number; price: number };
+    const groups: Record<string, Row[]> = {};
+    list.querySelectorAll<HTMLElement>('.item').forEach((el, idx) => {
+      (el.querySelector('.item-no') as HTMLElement).textContent = `商品 ${idx + 1}`;
+      const get = (k: string) => (el.querySelector(`[data-k="${k}"]`) as HTMLInputElement).value;
+      const pick = (k: string) => numOf(el.querySelector(`[data-k="${k}"]`));
+      const p = pick('p'), q = pick('q'), c = pick('c') || 1, u = get('u');
+      if (!(p > 0 && q > 0)) return;
+      const [base, mul] = UNITS[u];
+      const per = base === 'g' || base === 'ml' ? 100 : 1;
+      (groups[base] ||= []).push({ name: get('n') || `商品 ${idx + 1}`, p, q, u, c, base, per, price: (p / (q * mul * c)) * per });
+    });
+
+    const html = Object.values(groups).map((arr) => {
+      arr.sort((a, b) => a.price - b.price);
+      const min = arr[0].price, max = arr[arr.length - 1].price;
+      return '<ol class="rank">' + arr.map((it, i) => {
+        const top = i === 0 && arr.length > 1;
+        const diff = min > 0 ? (it.price / min - 1) * 100 : 0;
+        return `<li class="${top ? 'top' : ''}">
+          <div class="rank-top"><span class="rank-name">${i + 1}位　${esc(it.name)}</span><span class="rank-price">${fmt(it.price, 2)} 円 <small>/ ${it.per}${it.base}</small></span></div>
+          <div class="rank-meta"><span>${fmt(it.p)}円・${fmt(it.q, 2)}${it.u}${it.c > 1 ? ' × ' + it.c + '個' : ''}</span><span>${top ? '<span class="tag best">いちばんお得</span>' : i > 0 ? '+' + fmt(diff, 1) + '% 割高' : ''}</span></div>
+          <div class="bar"><i style="width:${max > 0 ? Math.max(4, (it.price / max) * 100) : 0}%"></i></div>
+        </li>`;
+      }).join('') + '</ol>';
+    }).join('');
+    $('out').innerHTML = html || '<p class="note">価格と内容量を入れると、ここに結果が出ます。</p>';
+  }
+
+  // 最初に表示する例（洗濯洗剤）
+  [
+    { n: 'ボトル（本体）', p: '398', q: '880', u: 'g', c: '1' },
+    { n: '詰め替え', p: '328', q: '720', u: 'g', c: '1' },
+    { n: '詰め替え 超特大', p: '698', q: '1.68', u: 'kg', c: '1' },
+  ].forEach(addItem);
+
+  $('add').addEventListener('click', () => {
+    addItem();
+    refresh();
+    (list.lastElementChild?.querySelector('input') as HTMLInputElement)?.focus();
+  });
+  list.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('.del');
+    if (b) { b.closest('.item')?.remove(); refresh(); }
+  });
+  const refresh = watch(update);
+</script>

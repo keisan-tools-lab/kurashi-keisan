@@ -1,0 +1,58 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="points">
+  <InputCard>
+    <Field id="price" label="商品の価格" unit="円" value={10000} positive />
+    <h3 style="margin:0">お店A</h3>
+    <div class="grid2">
+      <Field id="ad" label="お店Aの割引" unit="% 引き" value={10} min={0} max={100} />
+      <Field id="ar" label="お店Aのポイント還元" unit="%" value={0} min={0} max={100} />
+    </div>
+    <h3 style="margin:0">お店B</h3>
+    <div class="grid2">
+      <Field id="bd" label="お店Bの割引" unit="% 引き" value={0} min={0} max={100} />
+      <Field id="br" label="お店Bのポイント還元" unit="%" value={10} min={0} max={100} />
+    </div>
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="比べると" />
+    <p class="note" id="sub"></p>
+    <dl class="rows" id="rows"></dl>
+    <p class="note">「実質割引率」は、もらったポイントもふくめて考えたときの本当の割引率です。たとえば10%のポイント還元は、実質 約9.09%引きになります。</p>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, fmt, yen, rows, watch } from '../scripts/util';
+
+  function offer(P: number, d: number, r: number) {
+    const pay = P * (1 - (d || 0) / 100);
+    const pts = Math.floor((pay * (r || 0)) / 100);
+    return { pay, pts, eff: P > 0 ? 1 - pay / (P + pts) : NaN };
+  }
+
+  function update() {
+    const P = num('price');
+    const A = offer(P, num('ad'), num('ar'));
+    const B = offer(P, num('bd'), num('br'));
+    const diff = (A.eff - B.eff) * 100;
+    $('out').textContent = !Number.isFinite(diff) ? '—'
+      : Math.abs(diff) < 0.005 ? 'どちらも同じ' : (diff > 0 ? 'お店A' : 'お店B') + ' がお得';
+    $('sub').textContent = Number.isFinite(diff) && Math.abs(diff) >= 0.005
+      ? `実質割引率の差は ${fmt(Math.abs(diff), 2)} ポイントです。` : '';
+    const part = (n: string, x: ReturnType<typeof offer>): [string, string][] => [
+      [`<b>${n}</b>　支払う金額`, yen(x.pay)],
+      ['もらえるポイント', `${fmt(x.pts)} pt`],
+      ['支払い − ポイント', yen(x.pay - x.pts)],
+      ['実質割引率', `${fmt(x.eff * 100, 2)} %`],
+    ];
+    $('rows').innerHTML = rows([...part('お店A', A), ...part('お店B', B)]);
+  }
+  watch(update);
+</script>

@@ -1,0 +1,59 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Select from '../components/Select.astro';
+
+const counts = [3, 5, 6, 10, 12, 15, 18, 20, 24, 30, 36];
+---
+<Layout slug="install">
+  <InputCard>
+    <Field id="price" label="買い物の金額" unit="円" value={120000} positive />
+    <div class="grid2">
+      <Select id="count" label="支払回数" selected="12" options={counts.map((c) => ({ value: String(c), label: `${c}回` }))} />
+      <Field id="rate" label="実質年率" unit="%" value={15} min={0} max={100} />
+    </div>
+    <p class="hint">1回払い・2回払いは、多くのカードで手数料がかかりません。</p>
+  </InputCard>
+
+  <Result title="支払いの目安">
+    <Answer id="out" label="毎月の支払い" />
+    <dl class="rows" id="rows"></dl>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>回数</th><th>毎月</th><th>手数料の合計</th></tr></thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+    <p class="note">計算方法はカード会社によって少しちがうため、目安として使ってください。</p>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, val, fmt, yen, big, rows, watch, ym } from '../scripts/util';
+
+  // 元利均等方式で、毎月の支払額を出す
+  const monthly = (P: number, n: number, r: number) => {
+    const i = r / 100 / 12;
+    return i === 0 ? P / n : (P * i) / (1 - Math.pow(1 + i, -n));
+  };
+
+  function update() {
+    const P = num('price') || 0, n = parseInt(val('count'), 10), r = num('rate') || 0;
+    const m = monthly(P, n, r), total = m * n;
+    $('out').innerHTML = big(Math.round(m));
+    $('rows').innerHTML = rows([
+      ['支払いの合計', yen(total)],
+      ['分割手数料', yen(total - P)],
+      ['手数料は代金の', P ? `${fmt(((total - P) / P) * 100, 1)} %` : '—'],
+      ['支払回数', `${n} 回（${ym(n)}）`],
+    ]);
+    $('tbl').innerHTML = [3, 6, 10, 12, 24, 36].map((k) => {
+      const mm = monthly(P, k, r);
+      return `<tr${k === n ? ' class="on"' : ''}><td>${k} 回</td><td>${yen(mm)}</td><td>${yen(mm * k - P)}</td></tr>`;
+    }).join('');
+  }
+  watch(update);
+</script>

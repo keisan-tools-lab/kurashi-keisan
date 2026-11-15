@@ -1,0 +1,45 @@
+# =============================================
+# GitHub に変更を送る（push する）たびに、
+# サイトを自動で作って GitHub Pages に公開する設定です。
+# このファイルは変えなくて大丈夫です。
+# =============================================
+name: サイトを公開する
+
+on:
+  push:
+    branches: [main]   # main ブランチが更新されたら実行
+  workflow_dispatch:   # GitHub の画面から手動でも実行できる
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: サイトを作る
+    runs-on: ubuntu-latest
+    env:
+      REPO_NAME: ${{ github.event.repository.name }}
+      REPO_OWNER: ${{ github.repository_owner }}
+    steps:
+      - name: ファイルを取り出す
+        uses: actions/checkout@v4
+      - name: Astro でサイトを作る
+        uses: withastro/action@v3
+
+  deploy:
+    name: 公開する
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: GitHub Pages に公開
+        id: deployment
+        uses: actions/deploy-pages@v4

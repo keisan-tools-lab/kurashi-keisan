@@ -1,0 +1,52 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+import Select from '../components/Select.astro';
+---
+<Layout slug="tax">
+  <InputCard>
+    <Field id="amount" label="金額" unit="円" value={1280} min={0} />
+    <Choice name="dir" label="入れた金額は" checked="ex" options={[
+      { value: 'ex', label: '税抜' },
+      { value: 'in', label: '税込' },
+    ]} />
+    <Choice name="rate" label="税率" checked="10" options={[
+      { value: '10', label: '10%' },
+      { value: '8', label: '8%（食料品など）' },
+    ]} />
+    <Select id="rounding" label="1円未満の端数" selected="floor" options={[
+      { value: 'floor', label: '切り捨て（いちばん多い）' },
+      { value: 'round', label: '四捨五入' },
+      { value: 'ceil', label: '切り上げ' },
+    ]} />
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="税込価格" />
+    <dl class="rows" id="rows"></dl>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, val, radio, big, yen, rnd, rows, watch } from '../scripts/util';
+
+  function update() {
+    const a = num('amount'), r = parseFloat(radio('rate')) / 100, m = val('rounding');
+    let ex: number, t: number, inc: number;
+    if (radio('dir') === 'ex') {
+      ex = a; t = rnd(a * r, m); inc = ex + t;
+      $('out-label').textContent = '税込価格';
+      $('out').innerHTML = big(inc);
+    } else {
+      inc = a; t = rnd((a * r) / (1 + r), m); ex = inc - t;
+      $('out-label').textContent = '税抜価格';
+      $('out').innerHTML = big(ex);
+    }
+    $('rows').innerHTML = rows([['税抜価格', yen(ex)], ['消費税', yen(t)], ['税込価格', yen(inc)]]);
+  }
+  watch(update);
+</script>

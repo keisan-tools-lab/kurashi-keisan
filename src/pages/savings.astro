@@ -1,0 +1,60 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+---
+<Layout slug="savings">
+  <InputCard>
+    <div class="grid2">
+      <Field id="target" label="目標の金額" unit="円" value={1000000} positive />
+      <Field id="now" label="いまある貯金（なければ 0）" unit="円" value={200000} min={0} />
+      <Field id="years" label="期間（年）" unit="年" value={2} min={0} max={100} integer />
+      <Field id="months" label="期間（か月）" unit="か月" value={0} min={0} max={11} integer />
+    </div>
+    <Field id="rate" label="年利（普通預金なら 0 のまま）" unit="%" value={0} min={0} max={100} />
+    <Field id="monthly" label="逆算：毎月この金額を貯めると…" unit="円 / 月" value={30000} min={0} />
+  </InputCard>
+
+  <Result title="貯金のプラン">
+    <Answer id="out" label="毎月" />
+    <dl class="rows" id="rows"></dl>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, fmt, yen, big, rows, watch, ym, problem } from '../scripts/util';
+
+  function update() {
+    const T = num('target') || 0, C = num('now') || 0;
+    const n = Math.max(0, Math.floor((num('years') || 0) * 12 + (num('months') || 0)));
+    const i = (num('rate') || 0) / 100 / 12;
+
+    if (n === 0 && Number.isFinite(num('years')) && Number.isFinite(num('months'))) {
+      problem('期間が 0 になっています。「年」か「か月」に 1 以上の数字を入れてください。');
+    }
+    let need = NaN;
+    if (n > 0) {
+      const g = Math.pow(1 + i, n);
+      const rest = T - C * g;
+      need = rest <= 0 ? 0 : i === 0 ? rest / n : (rest * i) / (g - 1);
+    }
+    $('out-label').textContent = n > 0 ? `${ym(n)}で目標に届くには、毎月` : '期間を入れてください';
+    $('out').innerHTML = Number.isFinite(need) ? big(Math.ceil(need)) : '—';
+
+    // 逆算：毎月 X 円なら何か月で届くか
+    const X = num('monthly') || 0;
+    let k = 0, bal = C;
+    while (bal < T && k < 1200 && X > 0) { bal = bal * (1 + i) + X; k++; }
+    const reach = bal >= T ? (k === 0 ? 'もう届いています' : `${ym(k)}（${k}か月）`) : '100年以内には届きません';
+
+    $('rows').innerHTML = rows([
+      ['目標までの残り', yen(Math.max(0, T - C))],
+      ['1日あたりにすると', Number.isFinite(need) ? yen((need * 12) / 365) : '—'],
+      ['積み立てる合計', Number.isFinite(need) ? yen(Math.ceil(need) * n) : '—'],
+      [`毎月 ${fmt(X)} 円なら`, reach],
+    ]);
+  }
+  watch(update);
+</script>

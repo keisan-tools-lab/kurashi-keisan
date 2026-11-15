@@ -1,0 +1,23 @@
+---
+// トップページ（/）
+import Layout from '../layouts/Layout.astro';
+import ToolList from '../components/ToolList.astro';
+import { SITE, tools, categories } from '../data/tools';
+---
+<Layout title={`${SITE.name}｜毎日の計算をかんたんに`}>
+  <section class="hero">
+    <h1>毎日の「いくら？」「何日？」を<br />かんたん計算</h1>
+    <p class="lead">使いたい計算機を下から選んで、数字を入れるだけ。結果はすぐに表示されます。入力した数字はどこにも送信されません。</p>
+  </section>
+
+  <nav class="jump" aria-label="カテゴリ">
+    {categories.map((c) => <a href={`#cat-${c.id}`}>{c.name}</a>)}
+  </nav>
+
+  {categories.map((c) => (
+    <section class="cat" id={`cat-${c.id}`}>
+      <h2>{c.name}</h2>
+      <ToolList items={tools.filter((t) => t.cat === c.id)} />
+    </section>
+  ))}
+</Layout>

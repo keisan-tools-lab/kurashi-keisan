@@ -1,0 +1,55 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+---
+<Layout slug="wage">
+  <InputCard>
+    <Choice name="mode" label="どれを入れますか？" checked="h" options={[
+      { value: 'h', label: '時給' },
+      { value: 'm', label: '月給' },
+      { value: 'y', label: '年収' },
+    ]} />
+    <Field id="amount" label="金額" unit="円 / 時間" unitId="amount-unit" value={1200} min={0} />
+    <div class="grid2">
+      <Field id="hours" label="1日に働く時間" unit="時間" value={8} positive max={24} />
+      <Field id="days" label="1か月に働く日数" unit="日" value={20} positive max={31} />
+    </div>
+    <Field id="bonus" label="ボーナス（月給の何か月分）" unit="か月分" value={0} min={0} hint="ボーナスがなければ 0 のまま" />
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="年収にすると" />
+    <dl class="rows" id="rows"></dl>
+    <p class="note">税金や社会保険料を引く前の金額（額面）です。手取りはおよそ額面の75〜85%になります。</p>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, radio, fmt, yen, big, rows, watch } from '../scripts/util';
+
+  function update() {
+    const mode = radio('mode'), a = num('amount');
+    const h = num('hours') || 0, d = num('days') || 0, b = Math.max(0, num('bonus') || 0);
+    let hour: number, month: number, year: number;
+    if (mode === 'h') { hour = a; month = a * h * d; year = month * (12 + b); }
+    else if (mode === 'm') { month = a; hour = h * d ? a / (h * d) : NaN; year = a * (12 + b); }
+    else { year = a; month = a / (12 + b); hour = h * d ? month / (h * d) : NaN; }
+
+    $('amount-unit').textContent = { h: '円 / 時間', m: '円 / 月', y: '円 / 年' }[mode] ?? '円';
+    if (mode === 'y') { $('out-label').textContent = '時給にすると'; $('out').innerHTML = big(Math.round(hour)); }
+    else { $('out-label').textContent = '年収にすると'; $('out').innerHTML = big(Math.round(year)); }
+
+    $('rows').innerHTML = rows([
+      ['時給', yen(hour)],
+      [`日給（${fmt(h, 1)}時間）`, yen(hour * h)],
+      ['月給', yen(month)],
+      [b > 0 ? `年収（ボーナス${fmt(b, 1)}か月分こみ）` : '年収', yen(year)],
+      ['1年間に働く時間', `${fmt(h * d * 12)} 時間`],
+    ]);
+  }
+  watch(update);
+</script>

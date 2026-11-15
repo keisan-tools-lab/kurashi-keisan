@@ -1,0 +1,13 @@
+---
+// プルダウンで選ぶ欄
+interface Option { value: string; label: string }
+interface Props { id: string; label: string; options: Option[]; selected?: string; hint?: string }
+const { id, label, options, selected, hint } = Astro.props;
+---
+<div class="field">
+  <label for={id}>{label}</label>
+  <select id={id} class="select">
+    {options.map((o) => <option value={o.value} selected={o.value === selected}>{o.label}</option>)}
+  </select>
+  {hint && <p class="hint">{hint}</p>}
+</div>

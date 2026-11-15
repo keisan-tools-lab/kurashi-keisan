@@ -1,0 +1,64 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+---
+<Layout slug="loan">
+  <InputCard>
+    <Field id="principal" label="借りる金額" unit="円" value={30000000} positive />
+    <div class="grid2">
+      <Field id="rate" label="金利（年利）" unit="%" value={1.2} min={0} max={30} />
+      <Field id="years" label="返済期間" unit="年" value={35} min={1} max={50} integer />
+    </div>
+    <Choice name="method" label="返済のしかた" checked="a" options={[
+      { value: 'a', label: '元利均等（毎月同じ額）' },
+      { value: 'b', label: '元金均等（だんだん減る）' },
+    ]} />
+  </InputCard>
+
+  <Result title="返済の目安">
+    <Answer id="out" label="毎月の返済額" />
+    <dl class="rows" id="rows"></dl>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, radio, yen, big, rows, watch } from '../scripts/util';
+
+  function update() {
+    const P = num('principal') || 0;
+    const i = (num('rate') || 0) / 100 / 12;
+    const n = Math.max(1, Math.round((num('years') || 1) * 12));
+
+    if (radio('method') === 'a') {
+      const pay = i === 0 ? P / n : (P * i) / (1 - Math.pow(1 + i, -n));
+      const total = pay * n;
+      $('out-label').textContent = '毎月の返済額';
+      $('out').innerHTML = big(Math.round(pay));
+      $('rows').innerHTML = rows([
+        ['返済の合計', yen(total)],
+        ['そのうち利息', yen(total - P)],
+        ['1年間の返済額', yen(pay * 12)],
+        ['返済の回数', `${n} 回`],
+      ]);
+    } else {
+      const part = P / n;
+      const first = part + P * i;
+      const last = part + part * i;
+      const interest = (P * i * (n + 1)) / 2;
+      $('out-label').textContent = '1回目の返済額';
+      $('out').innerHTML = big(Math.round(first));
+      $('rows').innerHTML = rows([
+        ['最後の回の返済額', yen(last)],
+        ['毎月の元金の部分', yen(part)],
+        ['返済の合計', yen(P + interest)],
+        ['そのうち利息', yen(interest)],
+        ['返済の回数', `${n} 回`],
+      ]);
+    }
+  }
+  watch(update);
+</script>

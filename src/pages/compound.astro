@@ -1,0 +1,94 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+---
+<Layout slug="compound">
+  <InputCard>
+    <div class="grid2">
+      <Field id="principal" label="最初に入れるお金" unit="円" value={1000000} min={0} />
+      <Field id="monthly" label="毎月の積立" unit="円" value={30000} min={0} />
+      <Field id="rate" label="年利" unit="%" value={3} min={0} max={100} />
+      <Field id="years" label="期間" unit="年" value={20} min={1} max={60} integer />
+    </div>
+    <Choice name="freq" label="利息がつく間隔" checked="m" options={[
+      { value: 'm', label: '毎月（月複利）' },
+      { value: 'y', label: '毎年（年複利）' },
+    ]} />
+    <Choice name="tax" label="増えたお金にかかる税金" checked="0" options={[
+      { value: '0', label: 'なし（NISAなど）' },
+      { value: '0.20315', label: '20.315%' },
+    ]} />
+  </InputCard>
+
+  <Result title="運用したあとの金額">
+    <Answer id="out" label="—" />
+    <dl class="rows" id="rows"></dl>
+    <h3 style="margin:0">年ごとの増え方</h3>
+    <p class="legend"><span><i style="background:var(--bar)"></i>入れたお金</span><span><i style="background:var(--accent)"></i>増えたお金</span></p>
+    <div id="chart"></div>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, radio, fmt, yen, big, rows, watch } from '../scripts/util';
+
+  type Point = { y: number; c: number; b: number }; // 年, 入れたお金, 残高
+
+  function chart(data: Point[]): string {
+    const W = 640, H = 240, L = 58, R = 10, T = 12, B = 28, cw = W - L - R, ch = H - T - B;
+    const maxV = Math.max(1, ...data.map((d) => d.b));
+    const p = Math.pow(10, Math.floor(Math.log10(maxV / 4)));
+    const step = [1, 2, 2.5, 5, 10].map((x) => x * p).find((x) => x * 4 >= maxV) ?? 10 * p;
+    const top = step * 4;
+    const y = (v: number) => T + ch - (v / top) * ch;
+    let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="年ごとの残高の推移">`;
+    for (let i = 0; i <= 4; i++) {
+      const yy = y(step * i);
+      s += `<line class="gl" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end">${fmt((step * i) / 10000)}万</text>`;
+    }
+    const bw = cw / data.length, w = Math.max(2, bw * 0.68), every = Math.ceil(data.length / 8);
+    data.forEach((d, i) => {
+      const x = L + i * bw + (bw - w) / 2, yc = y(Math.min(d.c, d.b)), yb = y(d.b);
+      s += `<rect class="c-base" x="${x}" y="${yc}" width="${w}" height="${T + ch - yc}"/>`;
+      if (d.b > d.c) s += `<rect class="c-gain" x="${x}" y="${yb}" width="${w}" height="${yc - yb}"/>`;
+      if ((i + 1) % every === 0 || i === data.length - 1) s += `<text x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${d.y}年</text>`;
+    });
+    return s + '</svg>';
+  }
+
+  function update() {
+    const P = num('principal') || 0, M = num('monthly') || 0, r = (num('rate') || 0) / 100;
+    const Y = Math.min(60, Math.max(1, Math.floor(num('years') || 1)));
+    const freq = radio('freq'), taxRate = parseFloat(radio('tax'));
+
+    let bal = P, contrib = P, acc = 0;
+    const data: Point[] = [];
+    for (let mo = 1; mo <= Y * 12; mo++) {
+      bal += M; contrib += M;
+      if (freq === 'm') bal *= 1 + r / 12;
+      else { acc += (bal * r) / 12; if (mo % 12 === 0) { bal += acc; acc = 0; } }
+      if (mo % 12 === 0) data.push({ y: mo / 12, c: contrib, b: bal });
+    }
+    const gain = bal - contrib;
+    const tax = gain > 0 ? gain * taxRate : 0;
+
+    $('out-label').textContent = `${Y}年後${taxRate > 0 ? '（税金を引いたあと）' : ''}`;
+    $('out').innerHTML = big(Math.round(bal - tax));
+    const list: [string, string][] = [
+      ['入れたお金の合計', yen(contrib)],
+      ['増えたお金', yen(gain)],
+    ];
+    if (taxRate > 0) list.push(['税金（20.315%）', `−${yen(tax)}`]);
+    list.push(
+      ['増えた割合', contrib > 0 ? `${fmt((gain / contrib) * 100, 1)} %` : '—'],
+      ['お金が2倍になるまで（72の法則）', r > 0 ? `約 ${fmt(72 / (r * 100), 1)} 年` : '—'],
+    );
+    $('rows').innerHTML = rows(list);
+    $('chart').innerHTML = chart(data);
+  }
+  watch(update);
+</script>

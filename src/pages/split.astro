@@ -1,0 +1,71 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Select from '../components/Select.astro';
+---
+<Layout slug="split">
+  <InputCard>
+    <div class="grid2">
+      <Field id="total" label="合計金額" unit="円" value={38400} min={0} />
+      <Field id="people" label="人数" unit="人" value={6} min={1} integer />
+    </div>
+    <Select id="unit" label="切りのいい金額にする単位" selected="100" options={[
+      { value: '1', label: '1円（そのまま）' },
+      { value: '10', label: '10円' },
+      { value: '100', label: '100円' },
+      { value: '500', label: '500円' },
+      { value: '1000', label: '1,000円' },
+    ]} />
+    <div class="grid2">
+      <Field id="more" label="多めに払う人" unit="人" value={0} min={0} integer hint="いなければ 0 のまま" />
+      <Field id="ratio" label="その人の負担" unit="倍" value={1.5} positive max={100} hint="例：1.5倍" />
+    </div>
+  </InputCard>
+
+  <Result title="1人あたりの金額">
+    <Answer id="out" label="ぴったり割ると" />
+    <dl class="rows" id="rows"></dl>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, val, fmt, yen, rows, watch, problem } from '../scripts/util';
+
+  function update() {
+    const T = num('total');
+    const n = Math.max(1, Math.floor(num('people') || 1));
+    const u = parseFloat(val('unit'));
+    const m = Math.max(0, Math.min(n, Math.floor(num('more') || 0)));
+    const k = num('ratio');
+    if ((num('more') || 0) > n) {
+      problem(`「多めに払う人」(${fmt(num('more'))}人) が、全体の人数 (${n}人) より多くなっています。`);
+    }
+
+    const exact = T / n;
+    $('out').innerHTML = Number.isFinite(exact) ? `${fmt(exact, 1)}<small>円</small>` : '—';
+
+    const up = Math.ceil(exact / u - 1e-9) * u;
+    const down = Math.floor(exact / u + 1e-9) * u;
+    const list: [string, string][] = [
+      [`<b>集める方法①</b> ${fmt(u)}円単位で切り上げ`, yen(up)],
+      ['集まる金額', yen(up * n)],
+      ['余り（幹事があずかる）', yen(up * n - T)],
+      [`<b>集める方法②</b> ${fmt(u)}円単位で切り捨て`, yen(down)],
+      ['幹事が払う金額', yen(T - down * (n - 1))],
+    ];
+    if (m > 0 && k > 0 && k !== 1) {
+      const base = T / (m * k + (n - m));
+      const others = Math.ceil(base / u - 1e-9) * u;
+      const heavy = Math.ceil((base * k) / u - 1e-9) * u;
+      const collected = others * (n - m) + heavy * m;
+      list.push([`<b>多めに払う${m}人</b>（${fmt(k, 2)}倍）`, yen(heavy)]);
+      if (n - m > 0) list.push([`ほかの${n - m}人`, yen(others)]);
+      list.push(['集まる金額 / 余り', `${yen(collected)} / ${yen(collected - T)}`]);
+    }
+    $('rows').innerHTML = rows(list);
+  }
+  watch(update);
+</script>

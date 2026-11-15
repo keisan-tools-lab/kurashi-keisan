@@ -1,0 +1,57 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Select from '../components/Select.astro';
+---
+<Layout slug="power">
+  <InputCard>
+    <Select id="preset" label="家電の例から選ぶ（目安）" selected="600" options={[
+      { value: '', label: '自分で入力する' },
+      { value: '600', label: 'エアコン（冷房・平均） 600W' },
+      { value: '1000', label: '電子レンジ 1000W' },
+      { value: '1200', label: 'ドライヤー 1200W' },
+      { value: '1300', label: '電気ケトル 1300W' },
+      { value: '500', label: 'こたつ（強） 500W' },
+      { value: '100', label: 'テレビ 100W' },
+      { value: '40', label: 'LED照明 40W' },
+    ]} />
+    <div class="grid2">
+      <Field id="watt" label="消費電力" unit="W" value={600} min={0} />
+      <Field id="hours" label="1日に使う時間" unit="時間" value={8} min={0} max={24} />
+      <Field id="days" label="1か月に使う日数" unit="日" value={30} min={0} max={31} />
+      <Field id="price" label="電気料金の単価" unit="円/kWh" value={31} min={0} hint="31円は家電の表示に使われる目安です" />
+    </div>
+  </InputCard>
+
+  <Result title="電気代">
+    <Answer id="out" label="1か月で" />
+    <dl class="rows" id="rows"></dl>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, fmt, yen, big, rows, watch } from '../scripts/util';
+
+  const preset = $('preset') as HTMLSelectElement;
+  const watt = $('watt') as HTMLInputElement;
+  preset.addEventListener('input', () => { if (preset.value) watt.value = preset.value; });
+  watt.addEventListener('input', () => { preset.value = ''; });
+
+  function update() {
+    const w = num('watt') || 0, h = num('hours') || 0, d = num('days') || 0, u = num('price') || 0;
+    const perHour = (w / 1000) * u;
+    const perDay = perHour * h;
+    const perMonth = perDay * d;
+    $('out').innerHTML = big(perMonth);
+    $('rows').innerHTML = rows([
+      ['1時間あたり', yen(perHour, 2)],
+      [`1日（${fmt(h, 1)}時間）`, yen(perDay, 1)],
+      ['1年（毎月同じ使い方で）', yen(perMonth * 12)],
+      ['1か月に使う電気の量', `${fmt((w / 1000) * h * d, 1)} kWh`],
+    ]);
+  }
+  watch(update);
+</script>

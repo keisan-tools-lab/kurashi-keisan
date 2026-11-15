@@ -1,0 +1,88 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+---
+<Layout slug="subs">
+  <InputCard title="毎月・毎年の支払いを入れてください">
+    <div class="items" id="items"></div>
+    <button class="btn" type="button" id="add">＋ 支払いを追加する</button>
+  </InputCard>
+
+  <Result title="合計">
+    <Answer id="out" label="1年で" />
+    <dl class="rows" id="rows"></dl>
+    <h3 style="margin:0">金額が大きい順</h3>
+    <ol class="rank" id="ranking"></ol>
+  </Result>
+</Layout>
+
+<script>
+  import { $, fmt, yen, big, esc, rows, watch, numOf } from '../scripts/util';
+
+  const list = $('items');
+  let uid = 0;
+
+  function addRow(d = { n: '', a: '', c: 'm' }) {
+    const i = uid++;
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.dataset.kind = '支払い';
+    el.innerHTML = `
+      <div class="item-head"><strong class="item-no"></strong><button type="button" class="del">削除</button></div>
+      <div class="field"><label for="n${i}">名前</label><div class="inwrap"><input id="n${i}" data-k="n" type="text" value="${esc(d.n)}" placeholder="例：動画配信" autocomplete="off"></div></div>
+      <div class="grid2">
+        <div class="field"><label for="a${i}">金額</label><div class="inwrap"><input id="a${i}" data-k="a" type="text" inputmode="decimal" autocomplete="off" data-num data-label="金額" data-min="0" data-optional value="${d.a}"><span class="unit">円</span></div></div>
+        <div class="field"><label for="c${i}">支払いの間隔</label><select id="c${i}" data-k="c" class="select"><option value="m"${d.c === 'm' ? ' selected' : ''}>毎月</option><option value="y"${d.c === 'y' ? ' selected' : ''}>毎年</option></select></div>
+      </div>`;
+    list.appendChild(el);
+  }
+
+  function update() {
+    const items: { n: string; a: number; c: string; y: number }[] = [];
+    list.querySelectorAll<HTMLElement>('.item').forEach((el, i) => {
+      (el.querySelector('.item-no') as HTMLElement).textContent = `支払い ${i + 1}`;
+      const get = (k: string) => (el.querySelector(`[data-k="${k}"]`) as HTMLInputElement).value;
+      const a = numOf(el.querySelector('[data-k="a"]')) || 0;
+      if (a <= 0) return;
+      const c = get('c');
+      items.push({ n: get('n') || `支払い ${i + 1}`, a, c, y: c === 'm' ? a * 12 : a });
+    });
+    const Y = items.reduce((s, x) => s + x.y, 0);
+    $('out').innerHTML = big(Y);
+    $('rows').innerHTML = rows([
+      ['1か月あたり', yen(Y / 12)],
+      ['1日あたり', yen(Y / 365, 1)],
+      ['10年続けると', yen(Y * 10)],
+    ]);
+    items.sort((a, b) => b.y - a.y);
+    const max = items.length ? items[0].y : 0;
+    $('ranking').innerHTML = items.map((x) => `
+      <li>
+        <div class="rank-top"><span class="rank-name">${esc(x.n)}</span><span class="rank-price">${yen(x.y)} <small>/ 年</small></span></div>
+        <div class="rank-meta"><span>${x.c === 'm' ? '毎月' : '毎年'} ${yen(x.a)}</span><span>全体の ${fmt(Y ? (x.y / Y) * 100 : 0, 1)}%</span></div>
+        <div class="bar"><i style="width:${max ? Math.max(4, (x.y / max) * 100) : 0}%"></i></div>
+      </li>`).join('');
+  }
+
+  // 最初に表示する例
+  [
+    { n: 'スマホ代', a: '3278', c: 'm' },
+    { n: '動画配信', a: '1490', c: 'm' },
+    { n: '音楽配信', a: '1080', c: 'm' },
+    { n: 'ジム', a: '7700', c: 'm' },
+    { n: '通販の年会費', a: '5900', c: 'y' },
+  ].forEach(addRow);
+
+  $('add').addEventListener('click', () => {
+    addRow();
+    refresh();
+    (list.lastElementChild?.querySelector('input') as HTMLInputElement)?.focus();
+  });
+  list.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('.del');
+    if (b) { b.closest('.item')?.remove(); refresh(); }
+  });
+  const refresh = watch(update);
+</script>

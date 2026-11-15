@@ -1,0 +1,48 @@
+---
+// 数字や日付を入れる欄（ラベル＋入力欄＋単位＋エラーメッセージ）
+// 数字の欄は type="text" にして、全角数字やカンマも受け付けます。
+// min / max / integer / positive / optional を指定すると、自動で入力チェックされます。
+interface Props {
+  id: string;
+  label: string;
+  unit?: string;
+  unitId?: string; // 単位の文字をスクリプトで変えたいときの id
+  value?: string | number;
+  type?: 'number' | 'text' | 'date' | 'month';
+  min?: number;
+  max?: number;
+  integer?: boolean; // 整数だけ
+  positive?: boolean; // 0より大きい数だけ
+  optional?: boolean; // 空欄でもよい
+  placeholder?: string;
+  hint?: string;
+}
+const { id, label, unit, unitId, value, type = 'number', min, max, integer, positive, optional, placeholder, hint } = Astro.props;
+const isNumber = type === 'number';
+const isPicker = type === 'date' || type === 'month';
+---
+<div class="field">
+  <label for={id}>{label}</label>
+  <div class="inwrap">
+    <input
+      id={id}
+      type={isNumber ? 'text' : type}
+      inputmode={isNumber ? 'decimal' : undefined}
+      value={value}
+      placeholder={placeholder}
+      autocomplete="off"
+      aria-describedby={`${id}-error`}
+      data-label={isNumber || isPicker ? label : undefined}
+      data-num={isNumber ? '' : undefined}
+      data-min={min}
+      data-max={max}
+      data-int={integer ? '' : undefined}
+      data-pos={positive ? '' : undefined}
+      data-optional={optional ? '' : undefined}
+      data-required={isPicker && !optional ? '' : undefined}
+    />
+    {unit && <span class="unit" id={unitId}>{unit}</span>}
+  </div>
+  <p class="error" id={`${id}-error`} hidden></p>
+  {hint && <p class="hint">{hint}</p>}
+</div>

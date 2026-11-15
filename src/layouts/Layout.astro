@@ -1,0 +1,73 @@
+---
+// 全ページ共通の枠（ヘッダー・見出し・フッター）です。
+// 計算機のページでは <Layout slug="pet"> のように slug を渡すと、
+// src/data/tools.ts から見出しと説明文を自動で表示します。
+import '../styles/global.css';
+import ToolList from '../components/ToolList.astro';
+import { SITE, tools, categories, link } from '../data/tools';
+
+interface Props {
+  slug?: string;
+  title?: string;
+}
+const { slug, title } = Astro.props;
+
+const tool = slug ? tools.find((t) => t.slug === slug) : undefined;
+const category = tool ? categories.find((c) => c.id === tool.cat) : undefined;
+const related = tool ? tools.filter((t) => t.cat === tool.cat && t.slug !== tool.slug) : [];
+
+const pageTitle = tool ? `${tool.title}｜${SITE.name}` : (title ?? SITE.name);
+const description = tool ? `${tool.lead}` : SITE.description;
+---
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={link('favicon.svg')} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&family=Noto+Sans+JP:wght@400;500;700&display=swap" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a class="logo" href={link()}><img src={link('favicon.svg')} alt="" />{SITE.name}</a>
+        {tool && <a class="header-link" href={link()}>計算機の一覧</a>}
+      </div>
+    </header>
+
+    <main class="container main">
+      <noscript><p class="alert">このサイトの計算には JavaScript が必要です。ブラウザの設定で JavaScript を「オン」にしてください。</p></noscript>
+      {tool && (
+        <>
+          <a class="back" href={link()}>← トップページへ戻る</a>
+          <div class="page-head">
+            <p class="eyebrow">{category?.name}</p>
+            <h1>{tool.title}</h1>
+            <p class="lead">{tool.lead}</p>
+          </div>
+        </>
+      )}
+
+      <slot />
+
+      {tool && related.length > 0 && (
+        <section class="related">
+          <h2>ほかの「{category?.name}」の計算機</h2>
+          <ToolList items={related} />
+        </section>
+      )}
+      {tool && <a class="back" href={link()}>← トップページへ戻る</a>}
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>計算結果は目安です。お金に関する大切な判断は、契約書や金融機関の資料もあわせて確認してください。入力した数字はどこにも送信されません。</p>
+        <p>© {SITE.name}</p>
+      </div>
+    </footer>
+  </body>
+</html>

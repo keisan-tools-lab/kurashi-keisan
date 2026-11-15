@@ -1,0 +1,68 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Choice from '../components/Choice.astro';
+---
+<Layout slug="pet">
+  <InputCard>
+    <Choice name="kind" label="種類" checked="cat" options={[
+      { value: 'cat', label: '猫' },
+      { value: 'ds', label: '小型犬（10kgまで）' },
+      { value: 'dm', label: '中型犬（10〜25kg）' },
+      { value: 'dl', label: '大型犬（25kg以上）' },
+    ]} />
+    <div class="grid2">
+      <Field id="years" label="年齢" unit="歳" value={3} min={0} max={30} integer />
+      <Field id="months" label="月齢（わからなければ 0）" unit="か月" value={0} min={0} max={11} integer />
+    </div>
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="人間でいうと およそ" />
+    <p style="margin:0"><span class="tag" id="stage"></span></p>
+    <p class="note" id="rule"></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ペットの年齢</th><th>人間の年齢</th></tr></thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, radio, fmt, watch } from '../scripts/util';
+
+  // 一般的な換算の目安
+  function humanAge(kind: string, y: number): number {
+    if (kind === 'dl') return y <= 1 ? 12 * y : 12 + 7 * (y - 1);
+    const step = kind === 'dm' ? 5 : 4;
+    if (y <= 1) return 15 * y;
+    if (y <= 2) return 15 + 9 * (y - 1);
+    return 24 + step * (y - 2);
+  }
+  const stage = (h: number) =>
+    h < 13 ? '子ども期' : h < 20 ? '青年期' : h < 40 ? 'おとな期' : h < 60 ? '中年期' : h < 75 ? 'シニア期' : 'ハイシニア期';
+  const NAMES: Record<string, string> = { cat: '猫', ds: '小型犬', dm: '中型犬', dl: '大型犬' };
+
+  function update() {
+    const kind = radio('kind');
+    const y = (num('years') || 0) + (num('months') || 0) / 12;
+    const h = humanAge(kind, y);
+    $('out').innerHTML = `${fmt(h)}<small>歳</small>`;
+    $('stage').textContent = stage(h);
+    $('rule').textContent = kind === 'dl'
+      ? `${NAMES[kind]}は1歳で人間の約12歳。その後は1年で約7歳ずつ年をとります。`
+      : `${NAMES[kind]}は1歳で約15歳、2歳で約24歳。その後は1年で約${kind === 'dm' ? 5 : 4}歳ずつ年をとります。`;
+    const list = [1, 2, 3, 5, 7, 10, 12, 15, 18, 20];
+    let on = -1;
+    list.forEach((a, i) => { if (y >= a) on = i; });
+    $('tbl').innerHTML = list
+      .map((a, i) => `<tr${i === on ? ' class="on"' : ''}><td>${a} 歳</td><td>${fmt(humanAge(kind, a))} 歳</td></tr>`)
+      .join('');
+  }
+  watch(update);
+</script>

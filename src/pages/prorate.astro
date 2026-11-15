@@ -1,0 +1,60 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InputCard from '../components/InputCard.astro';
+import Result from '../components/Result.astro';
+import Answer from '../components/Answer.astro';
+import Field from '../components/Field.astro';
+import Select from '../components/Select.astro';
+---
+<Layout slug="prorate">
+  <InputCard>
+    <Field id="amount" label="月額（家賃など）" unit="円" value={82000} min={0} />
+    <Field id="month" type="month" label="対象の月" />
+    <div class="grid2">
+      <Field id="from" label="開始日" unit="日から" value={20} min={1} max={31} integer />
+      <Field id="to" label="終了日（空欄なら月末）" unit="日まで" min={1} max={31} integer optional placeholder="月末" />
+    </div>
+    <Select id="rounding" label="1円未満の端数" selected="floor" options={[
+      { value: 'floor', label: '切り捨て' },
+      { value: 'round', label: '四捨五入' },
+      { value: 'ceil', label: '切り上げ' },
+    ]} />
+  </InputCard>
+
+  <Result>
+    <Answer id="out" label="日割り金額" />
+    <dl class="rows" id="rows"></dl>
+    <p class="note">契約によっては「30日で割る」などの決まりがあります。契約書の計算方法も確認してください。</p>
+  </Result>
+</Layout>
+
+<script>
+  import { $, num, val, yen, big, rnd, rows, watch, pad, problem } from '../scripts/util';
+
+  const today = new Date();
+  ($('month') as HTMLInputElement).value = `${today.getFullYear()}-${pad(today.getMonth() + 1)}`;
+
+  function update() {
+    const a = num('amount'), ym = val('month');
+    if (!ym) { $('out').textContent = '—'; $('rows').innerHTML = ''; return; }
+    const [y, m] = ym.split('-').map(Number);
+    const dim = new Date(y, m, 0).getDate(); // その月の日数
+    const f0 = num('from'), t0 = num('to');
+    if (f0 > dim) problem(`${m}月は ${dim}日までです。「開始日」を ${dim} 以下にしてください。`);
+    if (t0 > dim) problem(`${m}月は ${dim}日までです。「終了日」を ${dim} 以下にするか、空欄にしてください。`);
+    if (Number.isFinite(f0) && Number.isFinite(t0) && t0 < f0) problem('「終了日」が「開始日」より前になっています。');
+    const s = Math.min(dim, Math.max(1, Math.floor(num('from') || 1)));
+    const t = num('to');
+    const e = Number.isFinite(t) ? Math.min(dim, Math.max(s, Math.floor(t))) : dim;
+    const days = e - s + 1;
+    const perDay = a / dim;
+    $('out-label').textContent = `${m}月${s}日〜${m}月${e}日の分`;
+    $('out').innerHTML = big(rnd(perDay * days, val('rounding')));
+    $('rows').innerHTML = rows([
+      ['その月の日数', `${dim} 日`],
+      ['対象の日数', `${days} 日`],
+      ['1日あたり', yen(perDay, 2)],
+    ]);
+  }
+  watch(update);
+</script>

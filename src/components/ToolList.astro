@@ -1,0 +1,19 @@
+---
+// 計算機へのリンクの一覧（トップページと、各ページ下の「ほかの計算機」で使用）
+import { link, type Tool } from '../data/tools';
+interface Props { items: Tool[] }
+const { items } = Astro.props;
+---
+<ul class="tool-list">
+  {items.map((t) => (
+    <li>
+      <a href={link(t.slug)}>
+        <span class="tool-text">
+          <span class="tool-name">{t.name}</span>
+          <span class="tool-desc">{t.desc}</span>
+        </span>
+        <span class="tool-arrow" aria-hidden="true">›</span>
+      </a>
+    </li>
+  ))}
+</ul>
